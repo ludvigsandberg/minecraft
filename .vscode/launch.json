@@ -2,15 +2,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "GDB",
-            "type": "cppdbg",
+            "name": "LLDB",
+            "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/build/minecraft",
             "args": [],
-            "cwd": "${workspaceFolder}/build",
-            "stopAtEntry": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "/usr/bin/gdb"
+            "cwd": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "preLaunchTask": "CMake: build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
         }
     ]
 }

@@ -2,10 +2,13 @@
 FROM ubuntu:22.04 AS linux-build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    # Build & debug tools
+    clang \
+    clangd \
+    lldb \
     cmake \
-    ninja-build \
-    gdb \
+    make \
+    # OpenGL & X11 development libraries
     libgl1-mesa-dev \
     libx11-dev \
     libxi-dev \

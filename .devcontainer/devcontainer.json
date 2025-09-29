@@ -11,8 +11,9 @@
 		"vscode": {
 			"extensions": [
 				"llvm-vs-code-extensions.vscode-clangd",
-				"ms-vscode.cpptools",
-				"ms-vscode.cmake-tools"
+				"ms-vscode.cmake-tools",
+				"ms-azuretools.vscode-docker",
+				"vadimcn.vscode-lldb"
 			]
 		}
 	}
