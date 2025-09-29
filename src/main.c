@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <meta.h>
 
 int main(void) {
     // Initialize GLFW
@@ -11,11 +12,11 @@ int main(void) {
 
     // Create a windowed mode window and OpenGL context
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
     GLFWwindow *window =
-        glfwCreateWindow(800, 600, "Minecraft Clone", NULL, NULL);
+        glfwCreateWindow(900, 600, "Minecraft", NULL, NULL);
     if (!window) {
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();
