@@ -15,8 +15,8 @@ int main(void) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-    GLFWwindow *window =
-        glfwCreateWindow(900, 600, "Minecraft", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(900, 600, "Minecraft", NULL, NULL);
+
     if (!window) {
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();

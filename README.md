@@ -28,5 +28,5 @@ Locate the binary in `out/` and run it.
 1. Open the project in VS Code.
 2. Command Palette -> `Dev Containers: Reopen in Container`.
 3. Delete `build/` if it exists and reconfigure with CMake: Command Palette -> `CMake: Configure`.
-3. Command Palette -> `CMake: Build`.
-3. Run and Debug -> Start Debugging (F5).
+4. Command Palette -> `CMake: Build`.
+5. Run and Debug -> Start Debugging (F5). Valgrind is also installed which you may run from the terminal.
