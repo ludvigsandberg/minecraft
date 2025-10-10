@@ -1,0 +1,12 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Valgrind",
+            "type": "shell",
+            "command": "valgrind --leak-check=full ./build/minecraft",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}

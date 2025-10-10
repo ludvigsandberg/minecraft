@@ -2,12 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "LLDB",
+            "name": "Windows LLDB",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/build/minecraft",
+            "program": "${workspaceFolder}/build-docker/minecraft.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/build",
+            "cwd": "${workspaceFolder}",
             "stopOnEntry": false
         }
     ]
