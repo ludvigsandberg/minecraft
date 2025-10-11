@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 #include <glad/glad.h>
+#include <meta.h>
 
 #define BLOCK_AIR   0
 #define BLOCK_GRASS 1

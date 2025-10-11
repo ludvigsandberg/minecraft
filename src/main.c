@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <assert.h>
@@ -54,7 +55,7 @@ void window_resize_cb(GLFWwindow *window, int width, int height) {
         float fov          = 70.f * M_PI / 180.f;
         float aspect_ratio = (float)viewport->width / (float)viewport->height;
         mat4x4_perspective(viewport->projection_matrix, fov, aspect_ratio,
-                           0.1f, 100.f);
+                           0.1f, 10000.f);
     }
 }
 
@@ -134,8 +135,10 @@ int main() {
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, atlas.data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                    GL_NEAREST_MIPMAP_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glGenerateMipmap(GL_TEXTURE_2D);
 
     /* World. */
 
@@ -150,7 +153,7 @@ int main() {
     float fov          = 70.f * M_PI / 180.f;
     float aspect_ratio = (float)viewport.width / (float)viewport.height;
     mat4x4_perspective(viewport.projection_matrix, fov, aspect_ratio, 0.1f,
-                       100.f);
+                       10000.f);
 
     float prev_timepoint = (float)glfwGetTime();
 
@@ -170,7 +173,7 @@ int main() {
 
         camera_update(&cam, window, delta_time);
 
-        world_update(&world);
+        world_update(&world, &cam);
 
         /* Bind & draw. */
 
@@ -187,9 +190,9 @@ int main() {
                     /* Translate loaded chunks to world coordinates. */
 
                     coord_t world_chunk_coord = {
-                        x + world.chunk_center_coord[0] - RENDER_DISTANCE,
-                        y + world.chunk_center_coord[1] - RENDER_DISTANCE,
-                        z + world.chunk_center_coord[1] - RENDER_DISTANCE};
+                        x + world.center_chunk_coord[0] - RENDER_DISTANCE,
+                        y + world.center_chunk_coord[1] - RENDER_DISTANCE,
+                        z + world.center_chunk_coord[2] - RENDER_DISTANCE};
 
                     mat4x4 model;
                     mat4x4_identity(model);
@@ -207,9 +210,12 @@ int main() {
 
                     /* Draw. */
 
-                    chunk_t *chunk =
-                        world.loaded_chunks[world_chunk_coord_to_index(
-                            &world, world_chunk_coord)];
+                    chunk_t *chunk = world.loaded_chunks[chunk_coord_to_index(
+                        world_chunk_coord, world.center_chunk_coord)];
+
+                    if (!chunk) {
+                        continue;
+                    }
 
                     glBindVertexArray(chunk->vertex_array);
 
@@ -221,7 +227,4 @@ int main() {
 
         glfwSwapBuffers(window);
     }
-
-    world_free(&world);
-    shader_program_free(shader_program);
 }

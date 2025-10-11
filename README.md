@@ -13,6 +13,9 @@ Cross-platform C99/OpenGL Minecraft.
 git clone https://github.com/ludvigsandberg/minecraft
 cd minecraft
 
+# Linux
+docker build --target=linux-export -t minecraft --output out/ .
+
 # Windows
 docker build --target=windows-export -t minecraft --output out/ .
 ```
@@ -25,14 +28,11 @@ Locate the binary in `out/` and run it locally on your machine.
 
 ## Developers
 
-### Dev Environment
-
-You want to setup an iterative dev environment so that docker doesn't recompile everything when you build.
+You will want to setup a dev environment where docker doesn't recompile everything every time you build.
 Use your editor of choice. 
-On Windows I strongly recommend using WSL.
+On Windows I recommend [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) and [WinDbg](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger).
 
-1. Configure CMake. This will generate `build/compile_commands.json` which clangd requires.
-If you aren't using clangd you might be able to skip this step.
+1. Configure CMake.
     ```sh
     cmake -B build -S .
     ```
@@ -41,11 +41,11 @@ If you aren't using clangd you might be able to skip this step.
     ```sh
     # Windows
 
-    # Build container, run once
+    # Build container, run this once
     docker build -t minecraft --target=windows-install .
 
-    # Run container with bind mount to build executable
-    docker run --rm -v "$(pwd)":/app -w /app minecraft sh -c "cmake -B build-docker -S . -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_C_FLAGS='-static -static-libgcc' -DCMAKE_BUILD_TYPE=Debug && cmake --build build-docker"
+    # Build executable
+    docker run --rm -v "$(pwd)":/app -w /app minecraft sh -c "cmake -B build-docker -S . -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ -DCMAKE_C_FLAGS='-static -static-libgcc' -DCMAKE_BUILD_TYPE=Debug && cmake --build build-docker"
     ```
 
 3. Run
@@ -54,7 +54,5 @@ If you aren't using clangd you might be able to skip this step.
     ./build-docker/minecraft.exe
     ```
 
-## Contribute
-
 Contributors are welcome to:
-- Add Linux and macOS Docker support.
+- Add macOS support to the Dockerfile.

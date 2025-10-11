@@ -39,10 +39,6 @@ GLuint shader_program_new(const char *vertex_shader_src,
     return program;
 }
 
-void shader_program_free(GLuint program) {
-    glDeleteProgram(program);
-}
-
 void APIENTRY opengl_debug_cb(GLenum src, GLenum type, GLuint id, GLenum sev,
                               GLsizei len, const GLchar *msg,
                               const void *ctx) {

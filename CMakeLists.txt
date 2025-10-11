@@ -18,6 +18,10 @@ endif()
 add_subdirectory(lib/glfw)
 add_subdirectory(lib/meta)
 
+set(TINYCTHREAD_DISABLE_TESTS ON CACHE BOOL "" FORCE)
+set(TINYCTHREAD_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(lib/tinycthread)
+
 add_library(glad STATIC lib/glad/src/glad.c)
 target_include_directories(glad PUBLIC lib/glad/include)
 
@@ -27,7 +31,6 @@ target_compile_options(linmath INTERFACE -w)
 
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE lib/stb)
-# target_compile_options(stb INTERFACE -w)
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     src/*.h
@@ -40,7 +43,7 @@ target_include_directories(minecraft PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(minecraft PRIVATE glfw meta glad linmath stb)
+target_link_libraries(minecraft PRIVATE glfw meta tinycthread glad linmath stb)
 
 target_compile_options(minecraft PRIVATE
     -Wall
