@@ -3,19 +3,32 @@
 #include <string.h>
 #include <math.h>
 
-void camera_new(camera_t *cam) {
+void camera_new(camera_t *camera) {
     vec3 pos = {0.f, 0.f, 0.f};
-    memcpy(cam->pos, pos, sizeof(vec3));
+    memcpy(camera->pos, pos, sizeof(vec3));
 
-    cam->pitch = 0.f;
-    cam->yaw   = 0.f;
+    camera->pitch = 0.f;
+    camera->yaw   = 0.f;
+
+    camera_update_viewport(camera, 900, 600);
 }
 
-void camera_update(camera_t *cam, GLFWwindow *window, float delta_time) {
+void camera_update_viewport(camera_t *camera, int width, int height) {
+    camera->viewport.width  = width;
+    camera->viewport.height = height;
+
+    float fov          = 70.f * M_PI / 180.f;
+    float aspect_ratio = (float)width / (float)height;
+
+    mat4x4_perspective(camera->viewport.projection_matrix, fov, aspect_ratio,
+                       0.1f, 10000.f);
+}
+
+void camera_update(camera_t *camera, GLFWwindow *window, float delta_time) {
     float speed = 20.f * delta_time;
 
-    float yaw_rad   = cam->yaw * M_PI / 180.f;
-    float pitch_rad = cam->pitch * M_PI / 180.f;
+    float yaw_rad   = camera->yaw * M_PI / 180.f;
+    float pitch_rad = camera->pitch * M_PI / 180.f;
 
     vec3 forward = {cosf(pitch_rad) * sinf(yaw_rad), sinf(pitch_rad),
                     cosf(pitch_rad) * cosf(yaw_rad)};
@@ -23,51 +36,52 @@ void camera_update(camera_t *cam, GLFWwindow *window, float delta_time) {
     vec3 right = {sinf(yaw_rad - M_PI_2), 0.f, cosf(yaw_rad - M_PI_2)};
 
     if (glfwGetKey(window, GLFW_KEY_W)) {
-        cam->pos[0] += forward[0] * speed;
-        cam->pos[1] += forward[1] * speed;
-        cam->pos[2] += forward[2] * speed;
+        camera->pos[0] += forward[0] * speed;
+        camera->pos[1] += forward[1] * speed;
+        camera->pos[2] += forward[2] * speed;
     }
     if (glfwGetKey(window, GLFW_KEY_S)) {
-        cam->pos[0] -= forward[0] * speed;
-        cam->pos[1] -= forward[1] * speed;
-        cam->pos[2] -= forward[2] * speed;
+        camera->pos[0] -= forward[0] * speed;
+        camera->pos[1] -= forward[1] * speed;
+        camera->pos[2] -= forward[2] * speed;
     }
     if (glfwGetKey(window, GLFW_KEY_A)) {
-        cam->pos[0] -= right[0] * speed;
-        cam->pos[2] -= right[2] * speed;
+        camera->pos[0] -= right[0] * speed;
+        camera->pos[2] -= right[2] * speed;
     }
     if (glfwGetKey(window, GLFW_KEY_D)) {
-        cam->pos[0] += right[0] * speed;
-        cam->pos[2] += right[2] * speed;
+        camera->pos[0] += right[0] * speed;
+        camera->pos[2] += right[2] * speed;
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-        cam->pos[1] += speed;
+        camera->pos[1] += speed;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-        cam->pos[1] -= speed;
+        camera->pos[1] -= speed;
     }
 
     float look_speed = 95.f * delta_time;
 
     if (glfwGetKey(window, GLFW_KEY_LEFT)) {
-        cam->yaw += look_speed;
+        camera->yaw += look_speed;
     }
     if (glfwGetKey(window, GLFW_KEY_RIGHT)) {
-        cam->yaw -= look_speed;
+        camera->yaw -= look_speed;
     }
     if (glfwGetKey(window, GLFW_KEY_UP)) {
-        cam->pitch += look_speed;
+        camera->pitch += look_speed;
     }
     if (glfwGetKey(window, GLFW_KEY_DOWN)) {
-        cam->pitch -= look_speed;
+        camera->pitch -= look_speed;
     }
 
-    if (cam->pitch > 89.f)
-        cam->pitch = 89.f;
-    if (cam->pitch < -89.f)
-        cam->pitch = -89.f;
+    if (camera->pitch > 89.f)
+        camera->pitch = 89.f;
+    if (camera->pitch < -89.f)
+        camera->pitch = -89.f;
 
     vec3 center;
-    vec3_add(center, cam->pos, forward);
-    mat4x4_look_at(cam->view_matrix, cam->pos, center, (vec3){0.f, 1.f, 0.f});
+    vec3_add(center, camera->pos, forward);
+    mat4x4_look_at(camera->view_matrix, camera->pos, center,
+                   (vec3){0.f, 1.f, 0.f});
 }

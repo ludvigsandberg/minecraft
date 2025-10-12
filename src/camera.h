@@ -9,9 +9,16 @@ typedef struct {
     float yaw;
     float pitch;
     mat4x4 view_matrix;
+
+    struct {
+        int width;
+        int height;
+        mat4x4 projection_matrix;
+    } viewport;
 } camera_t;
 
-void camera_new(camera_t *cam);
-void camera_update(camera_t *cam, GLFWwindow *window, float delta_time);
+void camera_new(camera_t *camera);
+void camera_update_viewport(camera_t *camera, int width, int height);
+void camera_update(camera_t *camera, GLFWwindow *window, float delta_time);
 
 #endif
