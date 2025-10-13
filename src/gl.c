@@ -2,6 +2,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+#include <meta.h>
 
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint shader = glCreateShader(type);
@@ -22,11 +26,37 @@ static GLuint compile_shader(GLenum type, const char *src) {
     return shader;
 }
 
-GLuint shader_program_new(const char *vertex_shader_src,
-                          const char *fragment_shader_src) {
-    GLuint vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex_shader_src);
-    GLuint fragmanet_shader =
-        compile_shader(GL_FRAGMENT_SHADER, fragment_shader_src);
+static GLuint load_shader(GLenum type, const char *path) {
+    FILE *file = fopen(path, "rb");
+
+    if (!file) {
+        printf("Failed to open %s\n", path);
+        exit(EXIT_FAILURE);
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t len = (size_t)ftell(file);
+    rewind(file);
+
+    arr(char) src;
+    arr_new_n(src, len);
+
+    fread(src, 1, len, file);
+    fclose(file);
+
+    static char nt = '\0';
+    arr_append(src, nt);
+
+    GLuint shader = compile_shader(type, src);
+
+    arr_free(src);
+
+    return shader;
+}
+
+GLuint shader_program_new(const char *vs_path, const char *fs_path) {
+    GLuint vertex_shader    = load_shader(GL_VERTEX_SHADER, vs_path);
+    GLuint fragmanet_shader = load_shader(GL_FRAGMENT_SHADER, fs_path);
 
     GLuint program = glCreateProgram();
     glAttachShader(program, vertex_shader);

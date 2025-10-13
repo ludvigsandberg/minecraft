@@ -15,66 +15,6 @@
 
 #include <chunk.h>
 
-static const char *vertex_shader_src =
-    "#version 450 core\n"
-    "layout(location = 0) in vec3 aPos;\n"
-    "layout(location = 1) in vec2 aTex;\n"
-    "out vec2 vTex;\n"
-    "out vec3 vWorldPos;\n"
-    "uniform mat4 model;\n"
-    "uniform mat4 view;\n"
-    "uniform mat4 projection;\n"
-    "void main() {\n"
-    "    vTex = aTex;\n"
-    "    vec4 worldPos = model * vec4(aPos, 1.0);\n"
-    "    vWorldPos = worldPos.xyz;\n"
-    "    gl_Position = projection * view * worldPos;\n"
-    "}\n";
-
-static const char *fragment_shader_src =
-    "#version 450 core\n"
-    "in vec2 vTex;\n"
-    "in vec3 vWorldPos;\n"
-    "out vec4 FragColor;\n"
-    "\n"
-    "uniform sampler2D atlas;\n"
-    "uniform vec3 cameraPos;\n"
-    "\n"
-    "uniform vec3 topColor;\n"
-    "uniform vec3 horizonColor;\n"
-    "uniform vec3 bottomColor;\n"
-    "\n"
-    "uniform float fogStart;\n"
-    "uniform float fogEnd;\n"
-    "\n"
-    "void main() {\n"
-    "    vec4 baseColor = texture(atlas, vTex);\n"
-    "\n"
-    "    // Distance from camera to fragment\n"
-    "    vec3 toFrag = vWorldPos - cameraPos;\n"
-    "    float dist = length(toFrag);\n"
-    "    vec3 viewDir = normalize(toFrag);\n"
-    "\n"
-    "    // Fog blend factor\n"
-    "    float fogFactor = clamp((fogEnd - dist) / (fogEnd - fogStart), 0.0, "
-    "1.0);\n"
-    "\n"
-    "    // Compute fog color based on vertical direction (same as sky)\n"
-    "    float y = viewDir.y;\n"
-    "    vec3 fogColor;\n"
-    "    if (y >= 0.0) {\n"
-    "        float t = pow(y, 0.75);\n"
-    "        fogColor = mix(horizonColor, topColor, t);\n"
-    "    } else {\n"
-    "        float t = pow(-y, 0.75);\n"
-    "        fogColor = mix(horizonColor, bottomColor, t);\n"
-    "    }\n"
-    "\n"
-    "    // Blend with fog\n"
-    "    vec3 color = mix(fogColor, baseColor.rgb, fogFactor);\n"
-    "    FragColor = vec4(color, baseColor.a);\n"
-    "}\n";
-
 void generate(blocks_t blocks, coord_t chunk_coord) {
     for (int64_t x = 0; x < CHUNK_SIZE; x++) {
         for (int64_t y = 0; y < CHUNK_SIZE; y++) {
@@ -177,7 +117,7 @@ void world_new(world_t *world) {
     /* Shaders. */
 
     world->shader_program =
-        shader_program_new(vertex_shader_src, fragment_shader_src);
+        shader_program_new("res/chunk_vs.glsl", "res/chunk_fs.glsl");
 
     world->uniform_loc.texture =
         glGetUniformLocation(world->shader_program, "atlas");
@@ -189,18 +129,6 @@ void world_new(world_t *world) {
         glGetUniformLocation(world->shader_program, "projection");
     world->uniform_loc.camera_pos =
         glGetUniformLocation(world->shader_program, "cameraPos");
-    world->uniform_loc.top_color =
-        glGetUniformLocation(world->shader_program, "topColor");
-    world->uniform_loc.horizon_color =
-        glGetUniformLocation(world->shader_program, "horizonColor");
-    world->uniform_loc.bottom_color =
-        glGetUniformLocation(world->shader_program, "bottomColor");
-    world->uniform_loc.fog_color =
-        glGetUniformLocation(world->shader_program, "foColor");
-    world->uniform_loc.fog_start =
-        glGetUniformLocation(world->shader_program, "fogStart");
-    world->uniform_loc.fog_end =
-        glGetUniformLocation(world->shader_program, "fogEnd");
 
     /* Texture atlas. */
 
@@ -415,14 +343,6 @@ void world_draw(world_t *world, camera_t *camera) {
 
     glUniform3fv(world->uniform_loc.camera_pos, 1,
                  (const GLfloat *)camera->pos);
-
-    glUniform3f(world->uniform_loc.top_color, .4f, .6f, 1.f);
-    glUniform3f(world->uniform_loc.horizon_color, .8f, .9f, 1.f);
-    glUniform3f(world->uniform_loc.bottom_color, .05f, .1f, .2f);
-
-    glUniform3f(world->uniform_loc.fog_color, .6f, .75f, 1.f);
-    glUniform1f(world->uniform_loc.fog_start, 32.f);
-    glUniform1f(world->uniform_loc.fog_end, 96.f);
 
     /* Draw loaded chunks. */
 

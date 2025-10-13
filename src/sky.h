@@ -12,9 +12,6 @@ typedef struct {
     struct {
         GLint inv_view_matrix;
         GLint inv_projection_matrix;
-        GLint top_color;
-        GLint horizon_color;
-        GLint bottom_color;
     } uniform_loc;
 } sky_t;
 

@@ -47,12 +47,6 @@ typedef struct {
         GLint view_matrix;
         GLint projection_matrix;
         GLint camera_pos;
-        GLint top_color;
-        GLint horizon_color;
-        GLint bottom_color;
-        GLint fog_color;
-        GLint fog_start;
-        GLint fog_end;
     } uniform_loc;
 } world_t;
 
