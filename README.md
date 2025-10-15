@@ -2,6 +2,8 @@
 
 Cross-platform C99/OpenGL Minecraft.
 
+![Screenshot](res/screenshot.png)
+
 ## Build Dependencies
 
 - [Git](https://git-scm.com/downloads)
