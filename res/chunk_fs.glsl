@@ -2,6 +2,8 @@
 
 in vec2 vTex;
 in vec3 vWorldPos;
+in float vShadow;
+
 out vec4 FragColor;
 
 uniform sampler2D atlas;
@@ -34,6 +36,6 @@ void main() {
         fogColor = mix(horizonColor, bottomColor, t);
     }
 
-    vec3 color = mix(fogColor, baseColor.rgb, fogFactor);
+    vec3 color = mix(fogColor, baseColor.rgb * vShadow, fogFactor);
     FragColor = vec4(color, baseColor.a);
 }
