@@ -28,7 +28,7 @@ void main() {
     float y = viewDir.y;
     vec3 fogColor;
 
-    if (y >= 0.0) {
+    if(y >= 0.0) {
         float t = pow(y, 0.75);
         fogColor = mix(horizonColor, topColor, t);
     } else {

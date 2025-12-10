@@ -1,4 +1,3 @@
-#include "gl.h"
 #include <world.h>
 
 #include <stdlib.h>
@@ -14,6 +13,7 @@
 #include <stb_image.h>
 
 #include <chunk.h>
+#include <gl.h>
 
 void generate(blocks_t blocks, coord_t chunk_coord) {
     for (int64_t x = 0; x < CHUNK_SIZE; x++) {
@@ -70,12 +70,14 @@ static int chunk_load_thread(void *ctx) {
     world_t *world = ctx;
 
     while (true) {
-        mtx_lock(&world->mutex);
-        while (world->running && alen(world->job_queue) == 0)
-            cnd_wait(&world->cond, &world->mutex);
+        SDL_LockMutex(world->mutex);
+
+        while (world->running && alen(world->job_queue) == 0) {
+            SDL_WaitCondition(world->cond, world->mutex);
+        }
 
         if (!world->running) {
-            mtx_unlock(&world->mutex);
+            SDL_UnlockMutex(world->mutex);
             break;
         }
 
@@ -85,7 +87,7 @@ static int chunk_load_thread(void *ctx) {
             alen(world->job_queue)--;
         }
 
-        mtx_unlock(&world->mutex);
+        SDL_UnlockMutex(world->mutex);
 
         chunk_result_t *res = malloc(sizeof(chunk_result_t));
         memcpy(res->coord, job->coord, sizeof(coord_t));
@@ -93,9 +95,9 @@ static int chunk_load_thread(void *ctx) {
 
         free(job);
 
-        mtx_lock(&world->mutex);
+        SDL_LockMutex(world->mutex);
         arr_append(world->result_queue, res);
-        mtx_unlock(&world->mutex);
+        SDL_UnlockMutex(world->mutex);
     }
 
     return 0;
@@ -105,12 +107,10 @@ static void load_chunk(world_t *world, coord_t chunk_coord) {
     chunk_job_t *job = malloc(sizeof(chunk_job_t));
     memcpy(job->coord, chunk_coord, sizeof(coord_t));
 
-    mtx_lock(&world->mutex);
-
+    SDL_LockMutex(world->mutex);
     arr_append(world->job_queue, job);
-    cnd_signal(&world->cond);
-
-    mtx_unlock(&world->mutex);
+    SDL_SignalCondition(world->cond);
+    SDL_UnlockMutex(world->mutex);
 }
 
 void world_new(world_t *world) {
@@ -160,11 +160,11 @@ void world_new(world_t *world) {
     arr_new(world->job_queue);
     arr_new(world->result_queue);
 
-    mtx_init(&world->mutex, mtx_plain);
-    cnd_init(&world->cond);
+    world->mutex = SDL_CreateMutex();
+    world->cond  = SDL_CreateCondition();
 
     world->running = true;
-    thrd_create(&world->thread, chunk_load_thread, world);
+    world->thread  = SDL_CreateThread(chunk_load_thread, "ChunkLoader", world);
 
     /* Load chunks. */
 
@@ -195,7 +195,7 @@ void world_update(world_t *world, const camera_t *cam) {
 
     /* Poll chunk thread for new chunks. */
 
-    mtx_lock(&world->mutex);
+    SDL_LockMutex(world->mutex);
 
     for (size_t i = 0; i < alen(world->result_queue); i++) {
         chunk_result_t *result = world->result_queue[i];
@@ -225,7 +225,7 @@ void world_update(world_t *world, const camera_t *cam) {
 
     alen(world->result_queue) = 0;
 
-    mtx_unlock(&world->mutex);
+    SDL_UnlockMutex(world->mutex);
 
     /* Check if camera has moved to a different chunk. */
 

@@ -3,6 +3,9 @@
 #include <string.h>
 #include <math.h>
 
+#define PI   3.14159265358979323846
+#define PI_2 (PI / 2.0)
+
 void camera_new(camera_t *camera) {
     vec3 pos = {0.f, 0.f, 0.f};
     memcpy(camera->pos, pos, sizeof(vec3));
@@ -17,71 +20,75 @@ void camera_update_viewport(camera_t *camera, int width, int height) {
     camera->viewport.width  = width;
     camera->viewport.height = height;
 
-    float fov          = 70.f * M_PI / 180.f;
+    float fov          = 70.f * PI / 180.f;
     float aspect_ratio = (float)width / (float)height;
 
     mat4x4_perspective(camera->viewport.projection_matrix, fov, aspect_ratio,
                        0.1f, 10000.f);
 }
+void camera_update(camera_t *camera, SDL_Window *window, float delta_time) {
+    const Uint8 *keys = SDL_GetKeyboardState(NULL);
 
-void camera_update(camera_t *camera, GLFWwindow *window, float delta_time) {
     float speed = 20.f * delta_time;
 
-    float yaw_rad   = camera->yaw * M_PI / 180.f;
-    float pitch_rad = camera->pitch * M_PI / 180.f;
+    float yaw_rad   = camera->yaw * PI / 180.f;
+    float pitch_rad = camera->pitch * PI / 180.f;
 
     vec3 forward = {cosf(pitch_rad) * sinf(yaw_rad), sinf(pitch_rad),
                     cosf(pitch_rad) * cosf(yaw_rad)};
 
-    vec3 right = {sinf(yaw_rad - M_PI_2), 0.f, cosf(yaw_rad - M_PI_2)};
+    vec3 right = {sinf(yaw_rad - PI_2), 0.f, cosf(yaw_rad - PI_2)};
 
-    if (glfwGetKey(window, GLFW_KEY_W)) {
+    if (keys[SDL_SCANCODE_W]) {
         camera->pos[0] += forward[0] * speed;
         camera->pos[1] += forward[1] * speed;
         camera->pos[2] += forward[2] * speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_S)) {
+    if (keys[SDL_SCANCODE_S]) {
         camera->pos[0] -= forward[0] * speed;
         camera->pos[1] -= forward[1] * speed;
         camera->pos[2] -= forward[2] * speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_A)) {
+    if (keys[SDL_SCANCODE_A]) {
         camera->pos[0] -= right[0] * speed;
         camera->pos[2] -= right[2] * speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_D)) {
+    if (keys[SDL_SCANCODE_D]) {
         camera->pos[0] += right[0] * speed;
         camera->pos[2] += right[2] * speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_SPACE)) {
+    if (keys[SDL_SCANCODE_SPACE]) {
         camera->pos[1] += speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
+    if (keys[SDL_SCANCODE_LSHIFT]) {
         camera->pos[1] -= speed;
     }
 
     float look_speed = 95.f * delta_time;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT)) {
+    if (keys[SDL_SCANCODE_LEFT]) {
         camera->yaw += look_speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_RIGHT)) {
+    if (keys[SDL_SCANCODE_RIGHT]) {
         camera->yaw -= look_speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_UP)) {
+    if (keys[SDL_SCANCODE_UP]) {
         camera->pitch += look_speed;
     }
-    if (glfwGetKey(window, GLFW_KEY_DOWN)) {
+    if (keys[SDL_SCANCODE_DOWN]) {
         camera->pitch -= look_speed;
     }
 
-    if (camera->pitch > 89.f)
+    if (camera->pitch > 89.f) {
         camera->pitch = 89.f;
-    if (camera->pitch < -89.f)
+    }
+    if (camera->pitch < -89.f) {
         camera->pitch = -89.f;
+    }
 
     vec3 center;
     vec3_add(center, camera->pos, forward);
+
     mat4x4_look_at(camera->view_matrix, camera->pos, center,
                    (vec3){0.f, 1.f, 0.f});
 }

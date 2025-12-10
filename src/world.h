@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <tinycthread.h>
+#include <SDL3/SDL_thread.h>
 #include <meta.h>
 
 #include <gl.h>
@@ -14,7 +14,7 @@
 #define RENDER_DISTANCE   6
 #define LOADED_CHUNKS_LEN (RENDER_DISTANCE * 2 + 1)
 #define LOADED_CHUNKS_TOTAL                                                   \
-    LOADED_CHUNKS_LEN *LOADED_CHUNKS_LEN *LOADED_CHUNKS_LEN
+    LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN
 
 typedef int64_t coord_t[3];
 
@@ -31,9 +31,9 @@ typedef struct {
     coord_t center_chunk_coord;
     chunk_t *loaded_chunks[LOADED_CHUNKS_TOTAL];
 
-    thrd_t thread;
-    mtx_t mutex;
-    cnd_t cond;
+    SDL_Thread *thread;
+    SDL_Mutex *mutex;
+    SDL_Condition *cond;
     bool running;
     arr(chunk_job_t *) job_queue;
     arr(chunk_result_t *) result_queue;

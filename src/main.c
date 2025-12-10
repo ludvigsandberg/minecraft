@@ -5,7 +5,7 @@
 #include <assert.h>
 
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 #include <linmath.h>
 
 #include <gl.h>
@@ -14,44 +14,37 @@
 #include <sky.h>
 #include <camera.h>
 
-void window_resize_cb(GLFWwindow *window, int width, int height) {
-    glViewport(0, 0, width, height);
-
-    camera_t *camera = glfwGetWindowUserPointer(window);
-    assert(camera);
-
-    camera_update_viewport(camera, width, height);
-}
-
-int main() {
-    /* Window. */
-
-    if (!glfwInit()) {
+int main(int argc, char **argv) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
         exit(EXIT_FAILURE);
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+                        SDL_GL_CONTEXT_PROFILE_CORE);
 #ifndef NDEBUG
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
 
     camera_t camera;
     camera_new(&camera);
 
-    GLFWwindow *window =
-        glfwCreateWindow(camera.viewport.width, camera.viewport.height,
-                         "Minecraft", NULL, NULL);
+    SDL_Window *window = SDL_CreateWindow(
+        "Minecraft", camera.viewport.width, camera.viewport.height,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
     if (!window) {
-        glfwTerminate();
         exit(EXIT_FAILURE);
     }
 
-    glfwMakeContextCurrent(window);
+    SDL_GLContext context = SDL_GL_CreateContext(window);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!context) {
+        exit(EXIT_FAILURE);
+    }
+
+    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         exit(EXIT_FAILURE);
     }
 
@@ -66,32 +59,37 @@ int main() {
     glDebugMessageCallback(opengl_debug_cb, NULL);
 #endif
 
-    glfwSetWindowUserPointer(window, &camera);
-    glfwSetFramebufferSizeCallback(window, window_resize_cb);
-
-    /* World. */
-
     world_t world;
     world_new(&world);
-
-    /* Sky. */
 
     sky_t sky;
     sky_new(&sky);
 
-    /* Main loop. */
+    float prev_timepoint = (float)SDL_GetTicks() / 1000.f;
 
-    float prev_timepoint = (float)glfwGetTime();
+    while (true) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            switch (event.type) {
+                case SDL_EVENT_QUIT: {
+                    goto end;
+                }
 
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
+                case SDL_EVENT_WINDOW_RESIZED: {
+                    glViewport(0, 0, event.window.data1, event.window.data2);
+                    camera_update_viewport(&camera, event.window.data1,
+                                           event.window.data2);
+                    break;
+                }
+            }
+        }
 
-        glClearColor(119.f / 255.f, 170.f / 255.f, 1.f, 1.f);
+        // glClearColor(119.f / 255.f, 170.f / 255.f, 1.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         /* Update. */
 
-        float timepoint  = (float)glfwGetTime();
+        float timepoint  = (float)SDL_GetTicks() / 1000.f;
         float delta_time = timepoint - prev_timepoint;
         prev_timepoint   = timepoint;
 
@@ -105,6 +103,8 @@ int main() {
 
         world_draw(&world, &camera);
 
-        glfwSwapBuffers(window);
+        SDL_GL_SwapWindow(window);
     }
+
+end:;
 }

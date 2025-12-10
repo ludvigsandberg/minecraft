@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 #include <linmath.h>
 
 typedef struct {
@@ -19,6 +19,6 @@ typedef struct {
 
 void camera_new(camera_t *camera);
 void camera_update_viewport(camera_t *camera, int width, int height);
-void camera_update(camera_t *camera, GLFWwindow *window, float delta_time);
+void camera_update(camera_t *camera, SDL_Window *window, float delta_time);
 
 #endif

@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 out vec4 FragColor;
 in vec2 vUV;
@@ -21,7 +21,7 @@ void main() {
     float y = viewDir.y;
     vec3 skyColor;
 
-    if (y >= 0.0) {
+    if(y >= 0.0) {
         float t = pow(y, 0.75);
         skyColor = mix(horizonColor, topColor, t);
     } else {
