@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <assert.h>
 
@@ -9,29 +10,67 @@
 #include <meta.h>
 
 static const float cube_positions[72] = {
-    -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,
-    -0.5f, 0.5f,  0.5f,  0.5f,  -0.5f, -0.5f, -0.5f, -0.5f, -0.5f,
-    -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f,
-    0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f,
-    0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,  0.5f,
-    0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
-    0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f};
+    // front
+    -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
+    // back
+    0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
+    -0.5f,
+    // left
+    -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f,
+    -0.5f,
+    // right
+    0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f,
+    // top
+    -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f,
+    // bottom
+    -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, -0.5f, -0.5f,
+    0.5f};
 
 static const float cube_uvs[48] = {
-    0.f, 1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f, 1.f,
-    1.f, 0.f, 0.f, 0.f, 1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f,
-    0.f, 1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 1.f, 1.f,
-    1.f, 0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f};
+    // front
+    0.f, 1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f,
+    // back
+    0.f, 1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f,
+    // left
+    1.f, 1.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f,
+    // right
+    0.f, 1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f,
+    // top
+    0.f, 1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f,
+    // bottom
+    0.f, 0.f, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f};
 
-static const float cube_shadows[6] = {.5f, .75f, 1.f, .5f, .75f, 1.f};
+static const float cube_shadows[6] = {
+    // front
+    .5f,
+    // back
+    .75f,
+    // left
+    0.9f,
+    // right
+    .55f,
+    // top
+    1.f,
+    // bottom
+    .5f};
 
-static const unsigned int cube_indices[36] = {
-    0,  1,  2,  2,  3,  0,  4,  5,  6,  6,  7,  4,  8,  9,  10, 10, 11, 8,
-    12, 13, 14, 14, 15, 12, 16, 17, 18, 18, 19, 16, 20, 21, 22, 22, 23, 20};
+static bool is_face_visible(blocks_t blocks, int x, int y, int z, int dx,
+                            int dy, int dz) {
+    int nx = x + dx;
+    int ny = y + dy;
+    int nz = z + dz;
+
+    if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_SIZE || nz < 0 ||
+        nz >= CHUNK_SIZE) {
+        return true;
+    }
+
+    return blocks[nz * (CHUNK_SIZE * CHUNK_SIZE) + ny * CHUNK_SIZE + nx] ==
+           BLOCK_AIR;
+}
 
 void chunk_new(chunk_t *chunk, blocks_t blocks) {
-    /* Construct chunk mesh. */
+    // Construct chunk mesh.
 
     arr(float) mesh_vertices;
     arr_new_reserve(mesh_vertices, CHUNK_TOTAL * (72 + 48 + 24));
@@ -39,11 +78,9 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
     arr(uint32_t) mesh_indices;
     arr_new_reserve(mesh_indices, CHUNK_TOTAL * 36);
 
-    size_t num_blocks = 0;
-
-    for (size_t x = 0; x < CHUNK_SIZE; x++) {
-        for (size_t y = 0; y < CHUNK_SIZE; y++) {
-            for (size_t z = 0; z < CHUNK_SIZE; z++) {
+    for (int x = 0; x < CHUNK_SIZE; x++) {
+        for (int y = 0; y < CHUNK_SIZE; y++) {
+            for (int z = 0; z < CHUNK_SIZE; z++) {
                 uint8_t block =
                     blocks[z * (CHUNK_SIZE * CHUNK_SIZE) + y * CHUNK_SIZE + x];
 
@@ -53,36 +90,71 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
 
                 vec2 uv_offs = {0.f, 0.f};
                 switch (block) {
-                    case 2:
+                    case BLOCK_STONE:
                         uv_offs[0] = 16.f / 256.f;
                 }
 
-                /* Append vertex position and uv to mesh. */
-                for (size_t i = 0; i < 24; i++) {
+                // for each face
 
-                    float vertex[6] = {cube_positions[i * 3 + 0] + x,
-                                       cube_positions[i * 3 + 1] + y,
-                                       cube_positions[i * 3 + 2] + z,
-                                       cube_uvs[i * 2 + 0] / 16.f + uv_offs[0],
-                                       cube_uvs[i * 2 + 1] / 16.f + uv_offs[1],
-                                       cube_shadows[i / 4]};
+                int face_dirs[6][3] = {
+                    // front
+                    {0, 0, 1},
+                    // back
+                    {0, 0, -1},
+                    // left
+                    {-1, 0, 0},
+                    // right
+                    {1, 0, 0},
+                    // top
+                    {0, 1, 0},
+                    // bottom
+                    {0, -1, 0},
+                };
 
-                    arr_append_n(mesh_vertices, 6, vertex);
+                for (int face_idx = 0; face_idx < 6; face_idx++) {
+                    if (is_face_visible(
+                            blocks, x, y, z, face_dirs[face_idx][0],
+                            face_dirs[face_idx][1], face_dirs[face_idx][2])) {
+
+                        // append indices
+
+                        static const int face_indices[6] = {0, 1, 2, 2, 3, 0};
+
+                        for (int i = 0; i < 6; i++) {
+                            size_t vertex_size = 6;
+                            size_t num_vertices =
+                                alen(mesh_vertices) / vertex_size;
+
+                            unsigned int index =
+                                num_vertices + face_indices[i];
+
+                            arr_append(mesh_indices, index);
+                        }
+
+                        // append vertices
+                        for (int v = 0; v < 4; v++) {
+                            size_t p = face_idx * 12 + v * 3;
+                            size_t t = face_idx * 8 + v * 2;
+
+                            float vertex[6] = {
+                                cube_positions[p + 0] + x,
+                                cube_positions[p + 1] + y,
+                                cube_positions[p + 2] + z,
+
+                                cube_uvs[t + 0] / 16.f + uv_offs[0],
+                                cube_uvs[t + 1] / 16.f + uv_offs[1],
+
+                                cube_shadows[face_idx]};
+
+                            arr_append_n(mesh_vertices, 6, vertex);
+                        }
+                    }
                 }
-
-                /* Append vertex index to mesh indices. */
-                for (size_t i = 0; i < 36; i++) {
-                    size_t block_local_vertex_index =
-                        num_blocks * 24 + cube_indices[i];
-                    arr_append(mesh_indices, block_local_vertex_index);
-                }
-
-                num_blocks++;
             }
         }
     }
 
-    /* Upload mesh to GPU. */
+    // Upload mesh to GPU.
 
     glGenVertexArrays(1, &chunk->vertex_array);
     glBindVertexArray(chunk->vertex_array);
@@ -109,7 +181,7 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
 
     chunk->num_indices = alen(mesh_indices);
 
-    /* Cleanup. */
+    // Cleanup.
 
     arr_free(mesh_indices);
     arr_free(mesh_vertices);

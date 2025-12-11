@@ -114,7 +114,7 @@ static void load_chunk(world_t *world, coord_t chunk_coord) {
 }
 
 void world_new(world_t *world) {
-    /* Shaders. */
+    // Shaders.
 
     world->shader_program =
         shader_program_new("res/chunk_vs.glsl", "res/chunk_fs.glsl");
@@ -130,7 +130,7 @@ void world_new(world_t *world) {
     world->uniform_loc.camera_pos =
         glGetUniformLocation(world->shader_program, "cameraPos");
 
-    /* Texture atlas. */
+    // Texture atlas.
 
     struct {
         uint8_t *data;
@@ -155,7 +155,7 @@ void world_new(world_t *world) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    /* Setup chunk loader threads. */
+    // Setup chunk loader threads.
 
     arr_new(world->job_queue);
     arr_new(world->result_queue);
@@ -166,7 +166,7 @@ void world_new(world_t *world) {
     world->running = true;
     world->thread  = SDL_CreateThread(chunk_load_thread, "ChunkLoader", world);
 
-    /* Load chunks. */
+    // Load chunks.
 
     for (size_t i = 0; i < 3; i++) {
         world->center_chunk_coord[i] = 0;
@@ -193,7 +193,7 @@ void world_update(world_t *world, const camera_t *cam) {
         camera_world_chunk_coord[1] = (int64_t)cam->pos[1] / CHUNK_SIZE,
         camera_world_chunk_coord[2] = (int64_t)cam->pos[2] / CHUNK_SIZE};
 
-    /* Poll chunk thread for new chunks. */
+    // Poll chunk thread for new chunks.
 
     SDL_LockMutex(world->mutex);
 
@@ -227,7 +227,7 @@ void world_update(world_t *world, const camera_t *cam) {
 
     SDL_UnlockMutex(world->mutex);
 
-    /* Check if camera has moved to a different chunk. */
+    // Check if camera has moved to a different chunk.
 
     bool camera_moved_to_different_chunk = false;
 
@@ -242,7 +242,7 @@ void world_update(world_t *world, const camera_t *cam) {
         return;
     }
 
-    /* Move loaded chunks and generate new ones. */
+    // Move loaded chunks and generate new ones.
 
     coord_t old_center_chunk_coord;
     memcpy(old_center_chunk_coord, world->center_chunk_coord, sizeof(coord_t));
@@ -259,8 +259,8 @@ void world_update(world_t *world, const camera_t *cam) {
     memcpy(old_loaded_chunks, world->loaded_chunks,
            LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
 
-    /* For each chunk in the new region, check if we can copy the chunk from
-       the previously loaded region or if we have to generate a new one. */
+    // For each chunk in the new region, check if we can copy the chunk from
+    // the previously loaded region or if we have to generate a new one.
 
     for (int64_t x = 0; x < LOADED_CHUNKS_LEN; x++) {
         for (int64_t y = 0; y < LOADED_CHUNKS_LEN; y++) {
@@ -270,7 +270,7 @@ void world_update(world_t *world, const camera_t *cam) {
                                                  y + chunk_coord_diff[1],
                                                  z + chunk_coord_diff[2]};
 
-                /* Check if chunk has moved out of new area and free if so. */
+                // Check if chunk has moved out of new area and free if so.
 
                 bool delete = false;
                 for (size_t i = 0; i < 3; i++) {
@@ -292,7 +292,7 @@ void world_update(world_t *world, const camera_t *cam) {
                     }
                 }
 
-                /* Check if chunk is still within area and can be copied. */
+                // Check if chunk is still within area and can be copied.
 
                 bool can_copy = true;
                 for (size_t i = 0; i < 3; i++) {
@@ -303,7 +303,7 @@ void world_update(world_t *world, const camera_t *cam) {
                     }
                 }
 
-                /* Can copy chunk. */
+                // Can copy chunk.
                 if (can_copy) {
                     chunk_t *old =
                         old_loaded_chunks[local_chunk_coord_to_index(
@@ -313,7 +313,7 @@ void world_update(world_t *world, const camera_t *cam) {
                         local_chunk_coord)] = old;
 
                 }
-                /* Generate new chunk. */
+                // Generate new chunk.
                 else {
                     coord_t chunk_coord;
                     for (size_t i = 0; i < 3; i++) {
@@ -333,7 +333,7 @@ void world_update(world_t *world, const camera_t *cam) {
 }
 
 void world_draw(world_t *world, camera_t *camera) {
-    /* Bind & draw. */
+    // Bind & draw.
 
     glUseProgram(world->shader_program);
 
@@ -344,12 +344,12 @@ void world_draw(world_t *world, camera_t *camera) {
     glUniform3fv(world->uniform_loc.camera_pos, 1,
                  (const GLfloat *)camera->pos);
 
-    /* Draw loaded chunks. */
+    // Draw loaded chunks.
 
-    for (size_t x = 0; x < LOADED_CHUNKS_LEN; x++) {
-        for (size_t y = 0; y < LOADED_CHUNKS_LEN; y++) {
-            for (size_t z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                /* Translate loaded chunks to world coordinates. */
+    for (int x = 0; x < LOADED_CHUNKS_LEN; x++) {
+        for (int y = 0; y < LOADED_CHUNKS_LEN; y++) {
+            for (int z = 0; z < LOADED_CHUNKS_LEN; z++) {
+                // Translate loaded chunks to world coordinates.
 
                 coord_t world_chunk_coord = {
                     x + world->center_chunk_coord[0] - RENDER_DISTANCE,
@@ -371,7 +371,7 @@ void world_draw(world_t *world, camera_t *camera) {
                     world->uniform_loc.projection_matrix, 1, GL_FALSE,
                     (const GLfloat *)camera->viewport.projection_matrix);
 
-                /* Draw. */
+                // Draw.
 
                 chunk_t *chunk = world->loaded_chunks[chunk_coord_to_index(
                     world_chunk_coord, world->center_chunk_coord)];

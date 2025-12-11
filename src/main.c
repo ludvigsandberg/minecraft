@@ -84,10 +84,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        // glClearColor(119.f / 255.f, 170.f / 255.f, 1.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        /* Update. */
 
         float timepoint  = (float)SDL_GetTicks() / 1000.f;
         float delta_time = timepoint - prev_timepoint;
@@ -96,8 +93,6 @@ int main(int argc, char **argv) {
         camera_update(&camera, window, delta_time);
 
         world_update(&world, &camera);
-
-        /* Draw. */
 
         sky_draw(&sky, &camera);
 
