@@ -1,8 +1,8 @@
 #ifndef SKY_H
 #define SKY_H
 
-#include <gl.h>
-#include <camera.h>
+#include <minecraft/gl.h>
+#include <minecraft/camera.h>
 
 typedef struct {
     GLuint shader_program;

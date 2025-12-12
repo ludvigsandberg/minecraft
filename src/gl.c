@@ -1,4 +1,4 @@
-#include <gl.h>
+#include <minecraft/gl.h>
 
 #include <stdio.h>
 #include <stdlib.h>

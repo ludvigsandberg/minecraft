@@ -1,4 +1,4 @@
-#include <camera.h>
+#include <minecraft/camera.h>
 
 #include <string.h>
 #include <math.h>
@@ -27,7 +27,7 @@ void camera_update_viewport(camera_t *camera, int width, int height) {
                        0.1f, 10000.f);
 }
 void camera_update(camera_t *camera, SDL_Window *window, float delta_time) {
-    const Uint8 *keys = SDL_GetKeyboardState(NULL);
+    const bool *keys = SDL_GetKeyboardState(NULL);
 
     float speed = 20.f * delta_time;
 

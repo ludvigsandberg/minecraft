@@ -2,7 +2,7 @@
 
 Cross-platform Minecraft clone in C99/OpenGL
 
-![Screenshot](docs/screenshot.png)
+![Screenshot](docs/Minecraft%202025-12-12%2014_03_16.png)
 
 ## Features
 

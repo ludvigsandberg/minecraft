@@ -1,4 +1,4 @@
-#include <sky.h>
+#include <minecraft/sky.h>
 
 #include <linmath.h>
 

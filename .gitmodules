@@ -1,0 +1,12 @@
+[submodule "vendor/linmath.h"]
+	path = vendor/linmath.h
+	url = https://github.com/datenwolf/linmath.h
+[submodule "vendor/meta"]
+	path = vendor/meta
+	url = https://github.com/ludvigsandberg/meta
+[submodule "vendor/SDL"]
+	path = vendor/SDL
+	url = https://github.com/libsdl-org/SDL
+[submodule "vendor/stb"]
+	path = vendor/stb
+	url = https://github.com/nothings/stb

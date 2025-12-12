@@ -12,7 +12,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 add_executable(minecraft ${SOURCES})
 
 target_include_directories(minecraft PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
 add_subdirectory(vendor/SDL EXCLUDE_FROM_ALL)
@@ -34,11 +34,11 @@ target_include_directories(stb INTERFACE vendor/stb)
 target_link_libraries(minecraft PRIVATE SDL3::SDL3 meta glad linmath stb)
 
 target_compile_options(minecraft PRIVATE
-    $<$<CXX_COMPILER_ID:MSVC>:
+    $<$<C_COMPILER_ID:MSVC>:
         /W4 /WX /permissive-
     >
 
-    $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>>:
+    $<$<OR:$<C_COMPILER_ID:GNU>,$<C_COMPILER_ID:Clang>>:
         -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow -Wunused -Wno-error=unused-parameter -Wswitch-enum -pedantic-errors
     >
 )

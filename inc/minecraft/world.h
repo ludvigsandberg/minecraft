@@ -7,9 +7,9 @@
 #include <SDL3/SDL_thread.h>
 #include <meta.h>
 
-#include <gl.h>
-#include <chunk.h>
-#include <camera.h>
+#include <minecraft/gl.h>
+#include <minecraft/chunk.h>
+#include <minecraft/camera.h>
 
 #define RENDER_DISTANCE   6
 #define LOADED_CHUNKS_LEN (RENDER_DISTANCE * 2 + 1)

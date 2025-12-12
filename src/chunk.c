@@ -1,4 +1,4 @@
-#include <chunk.h>
+#include <minecraft/chunk.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -42,17 +42,17 @@ static const float cube_uvs[48] = {
 
 static const float cube_shadows[6] = {
     // front
-    .5f,
+    0.90f,
     // back
-    .75f,
+    0.60f,
     // left
-    0.9f,
+    0.50f,
     // right
-    .55f,
+    0.70f,
     // top
-    1.f,
+    1.00f,
     // bottom
-    .5f};
+    0.55f};
 
 static bool is_face_visible(blocks_t blocks, int x, int y, int z, int dx,
                             int dy, int dz) {
@@ -70,7 +70,7 @@ static bool is_face_visible(blocks_t blocks, int x, int y, int z, int dx,
 }
 
 void chunk_new(chunk_t *chunk, blocks_t blocks) {
-    // Construct chunk mesh.
+    // batch blocks into mesh
 
     arr(float) mesh_vertices;
     arr_new_reserve(mesh_vertices, CHUNK_TOTAL * (72 + 48 + 24));
@@ -94,8 +94,6 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
                         uv_offs[0] = 16.f / 256.f;
                 }
 
-                // for each face
-
                 int face_dirs[6][3] = {
                     // front
                     {0, 0, 1},
@@ -110,6 +108,8 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
                     // bottom
                     {0, -1, 0},
                 };
+
+                // for each face
 
                 for (int face_idx = 0; face_idx < 6; face_idx++) {
                     if (is_face_visible(
@@ -154,7 +154,7 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
         }
     }
 
-    // Upload mesh to GPU.
+    // upload mesh to gpu
 
     glGenVertexArrays(1, &chunk->vertex_array);
     glBindVertexArray(chunk->vertex_array);
@@ -181,7 +181,7 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
 
     chunk->num_indices = alen(mesh_indices);
 
-    // Cleanup.
+    // cleanup
 
     arr_free(mesh_indices);
     arr_free(mesh_vertices);
