@@ -161,12 +161,10 @@ void gui_draw(gui_t *gui, int window_width, int window_height) {
         float y0       = (y_top * 2.0f / window_height) - 1.0f;
         float y1       = (y_bottom * 2.0f / window_height) - 1.0f;
 
-        // Scale UVs: sample only 'real_width' out of the 8px cell
         float u0 = (glyph.charset.x * 8 + 0) / 128.0f;
-        float u1 = (glyph.charset.x * 8 + glyph.charset.w) /
-                   128.0f;                             // ← this is the key
-        float v0 = (glyph.charset.y * 8 + 0) / 128.0f; // top
-        float v1 = (glyph.charset.y * 8 + 8) / 128.0f; // bottom → top in GL
+        float u1 = (glyph.charset.x * 8 + glyph.charset.w) / 128.0f;
+        float v0 = (glyph.charset.y * 8 + 0) / 128.0f;
+        float v1 = (glyph.charset.y * 8 + 8) / 128.0f;
 
         float vertex_data[16] = {x0, y1, u0, v1, x1, y1, u1, v1,
                                  x1, y0, u1, v0, x0, y0, u0, v0};
