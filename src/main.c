@@ -59,7 +59,6 @@ int main(int argc, char **argv) {
 
 #ifndef NDEBUG
     glEnable(GL_DEBUG_OUTPUT);
-    // glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(opengl_debug_cb, NULL);
 #endif
 
@@ -99,6 +98,34 @@ int main(int argc, char **argv) {
 
         camera_update(&camera, window, delta_time);
 
+        // carve out blocks around camera
+
+        coord_t center = {(int64_t)camera.pos[0], (int64_t)camera.pos[1],
+                          (int64_t)camera.pos[2]};
+
+        float radius = 5;
+
+        for (int64_t x = center[0] - radius; x <= center[0] + radius; x++) {
+            for (int64_t y = center[1] - radius; y <= center[1] + radius;
+                 y++) {
+                for (int64_t z = center[2] - radius; z <= center[2] + radius;
+                     z++) {
+                    coord_t diff = {x - center[0], y - center[1],
+                                    z - center[2]};
+
+                    float len =
+                        sqrtf((float)(diff[0] * diff[0] + diff[1] * diff[1] +
+                                      diff[2] * diff[2]));
+
+                    if (len <= radius) {
+                        coord_t current = {x, y, z};
+
+                        world_set_block(&world, current, BLOCK_AIR);
+                    }
+                }
+            }
+        }
+
         world_update(&world, &camera);
 
         // draw
@@ -109,8 +136,17 @@ int main(int argc, char **argv) {
 
         world_draw(&world, &camera);
 
+        int vertical = 16;
+
         gui_text(&gui, 10, 10, "Minecraft");
-        gui_text(&gui, 10, 30, "Frame %.1fms", delta_time * 1000.f);
+        gui_text(&gui, 10, 10 + vertical, "frame %.1fms", delta_time * 1000.f);
+
+        gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", camera.pos[0]);
+        gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", camera.pos[1]);
+        gui_text(&gui, 10, 10 + 5 * vertical, "z %.2f", camera.pos[2]);
+
+        gui_text(&gui, 10, 10 + 7 * vertical, "yaw %.2f", camera.yaw);
+        gui_text(&gui, 10, 10 + 8 * vertical, "pitch %.2f", camera.pitch);
 
         gui_draw(&gui, camera.viewport.width, camera.viewport.height);
 

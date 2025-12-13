@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #include <glad/glad.h>
 #include <meta.h>
@@ -12,11 +13,16 @@
 #define BLOCK_STONE 2
 
 #define CHUNK_SIZE  16
-#define CHUNK_TOTAL CHUNK_SIZE *CHUNK_SIZE *CHUNK_SIZE
+#define CHUNK_TOTAL CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE
+
 typedef uint8_t blocks_t[CHUNK_TOTAL];
 
 typedef struct {
     blocks_t blocks;
+    uint8_t skylight[CHUNK_TOTAL];
+
+    // mesh needs to be regenerated
+    bool dirty;
 
     GLuint vertex_array;
     GLuint vertex_buffer;
@@ -26,5 +32,6 @@ typedef struct {
 
 void chunk_new(chunk_t *chunk, blocks_t blocks);
 void chunk_free(chunk_t chunk);
+void chunk_update(chunk_t *chunk);
 
 #endif

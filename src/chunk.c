@@ -40,6 +40,21 @@ static const float cube_uvs[48] = {
     // bottom
     0.f, 0.f, 1.f, 0.f, 1.f, 1.f, 0.f, 1.f};
 
+static const int cube_face_dirs[6][3] = {
+    // front
+    {0, 0, 1},
+    // back
+    {0, 0, -1},
+    // left
+    {-1, 0, 0},
+    // right
+    {1, 0, 0},
+    // top
+    {0, 1, 0},
+    // bottom
+    {0, -1, 0},
+};
+
 static const float cube_shadows[6] = {
     // front
     0.90f,
@@ -69,7 +84,7 @@ static bool is_face_visible(blocks_t blocks, int x, int y, int z, int dx,
            BLOCK_AIR;
 }
 
-void chunk_new(chunk_t *chunk, blocks_t blocks) {
+static void generate_mesh(chunk_t *chunk) {
     // batch blocks into mesh
 
     arr(float) mesh_vertices;
@@ -81,8 +96,8 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int y = 0; y < CHUNK_SIZE; y++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
-                uint8_t block =
-                    blocks[z * (CHUNK_SIZE * CHUNK_SIZE) + y * CHUNK_SIZE + x];
+                uint8_t block = chunk->blocks[z * (CHUNK_SIZE * CHUNK_SIZE) +
+                                              y * CHUNK_SIZE + x];
 
                 if (block == BLOCK_AIR) {
                     continue;
@@ -94,27 +109,13 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
                         uv_offs[0] = 16.f / 256.f;
                 }
 
-                int face_dirs[6][3] = {
-                    // front
-                    {0, 0, 1},
-                    // back
-                    {0, 0, -1},
-                    // left
-                    {-1, 0, 0},
-                    // right
-                    {1, 0, 0},
-                    // top
-                    {0, 1, 0},
-                    // bottom
-                    {0, -1, 0},
-                };
-
                 // for each face
 
                 for (int face_idx = 0; face_idx < 6; face_idx++) {
-                    if (is_face_visible(
-                            blocks, x, y, z, face_dirs[face_idx][0],
-                            face_dirs[face_idx][1], face_dirs[face_idx][2])) {
+                    if (is_face_visible(chunk->blocks, x, y, z,
+                                        cube_face_dirs[face_idx][0],
+                                        cube_face_dirs[face_idx][1],
+                                        cube_face_dirs[face_idx][2])) {
 
                         // append indices
 
@@ -156,13 +157,43 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
 
     // upload mesh to gpu
 
+    glBindVertexArray(chunk->vertex_array);
+
+    glBindBuffer(GL_ARRAY_BUFFER, chunk->vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, alen(mesh_vertices) * sizeof(float), NULL,
+                 GL_DYNAMIC_DRAW); // buffer orphaning
+    glBufferSubData(GL_ARRAY_BUFFER, 0, alen(mesh_vertices) * sizeof(float),
+                    mesh_vertices);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk->element_buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 alen(mesh_indices) * sizeof(uint32_t), NULL,
+                 GL_DYNAMIC_DRAW); // buffer orphaning
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
+                    alen(mesh_indices) * sizeof(uint32_t), mesh_indices);
+
+    chunk->num_indices = alen(mesh_indices);
+
+    // cleanup
+
+    arr_free(mesh_indices);
+    arr_free(mesh_vertices);
+}
+
+void chunk_new(chunk_t *chunk, blocks_t blocks) {
+    chunk->dirty = false;
+
+    memcpy(chunk->blocks, blocks, CHUNK_TOTAL * sizeof(uint8_t));
+
+    // create buffers
+
     glGenVertexArrays(1, &chunk->vertex_array);
     glBindVertexArray(chunk->vertex_array);
 
     glGenBuffers(1, &chunk->vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, chunk->vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, alen(mesh_vertices) * sizeof(float),
-                 mesh_vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, CHUNK_TOTAL * 6 * 4 * 6 * sizeof(float),
+                 NULL, GL_DYNAMIC_DRAW); // pre allocate
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
                           (void *)0);
     glEnableVertexAttribArray(0);
@@ -176,19 +207,24 @@ void chunk_new(chunk_t *chunk, blocks_t blocks) {
     glGenBuffers(1, &chunk->element_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk->element_buffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 alen(mesh_indices) * sizeof(uint32_t), mesh_indices,
-                 GL_STATIC_DRAW);
+                 CHUNK_TOTAL * 6 * 6 * sizeof(uint32_t), NULL,
+                 GL_DYNAMIC_DRAW); // pre allocate
 
-    chunk->num_indices = alen(mesh_indices);
+    // generate
 
-    // cleanup
-
-    arr_free(mesh_indices);
-    arr_free(mesh_vertices);
+    generate_mesh(chunk);
 }
 
 void chunk_free(chunk_t chunk) {
     glDeleteBuffers(1, &chunk.element_buffer);
     glDeleteBuffers(1, &chunk.vertex_buffer);
     glDeleteVertexArrays(1, &chunk.vertex_array);
+}
+
+void chunk_update(chunk_t *chunk) {
+    if (chunk->dirty) {
+        generate_mesh(chunk);
+
+        chunk->dirty = false;
+    }
 }

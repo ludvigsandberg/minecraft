@@ -8,7 +8,7 @@
 #include <meta.h>
 
 #define MAX_GLYPHS   4096
-#define GLYPH_PIXELS 16
+#define GLYPH_PIXELS 12
 
 typedef struct {
     struct {

@@ -236,97 +236,104 @@ void world_update(world_t *world, const camera_t *cam) {
         }
     }
 
-    if (!camera_moved_to_different_chunk) {
-        return;
-    }
-
     // move and generate chunks
+    if (camera_moved_to_different_chunk) {
+        coord_t old_center_chunk_coord;
+        memcpy(old_center_chunk_coord, world->center_chunk_coord,
+               sizeof(coord_t));
 
-    coord_t old_center_chunk_coord;
-    memcpy(old_center_chunk_coord, world->center_chunk_coord, sizeof(coord_t));
+        memcpy(world->center_chunk_coord, camera_world_chunk_coord,
+               sizeof(coord_t));
 
-    memcpy(world->center_chunk_coord, camera_world_chunk_coord,
-           sizeof(coord_t));
+        coord_t chunk_coord_diff = {
+            world->center_chunk_coord[0] - old_center_chunk_coord[0],
+            world->center_chunk_coord[1] - old_center_chunk_coord[1],
+            world->center_chunk_coord[2] - old_center_chunk_coord[2]};
 
-    coord_t chunk_coord_diff = {
-        world->center_chunk_coord[0] - old_center_chunk_coord[0],
-        world->center_chunk_coord[1] - old_center_chunk_coord[1],
-        world->center_chunk_coord[2] - old_center_chunk_coord[2]};
+        chunk_t *old_loaded_chunks[LOADED_CHUNKS_TOTAL];
+        memcpy(old_loaded_chunks, world->loaded_chunks,
+               LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
 
-    chunk_t *old_loaded_chunks[LOADED_CHUNKS_TOTAL];
-    memcpy(old_loaded_chunks, world->loaded_chunks,
-           LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
+        // for each chunk in the new region, check if we can copy the chunk
+        // from the previously loaded region or if a new one has to be
+        // generated
 
-    // for each chunk in the new region, check if we can copy the chunk from
-    // the previously loaded region or if a new one has to be generated
+        for (int64_t x = 0; x < LOADED_CHUNKS_LEN; x++) {
+            for (int64_t y = 0; y < LOADED_CHUNKS_LEN; y++) {
+                for (int64_t z = 0; z < LOADED_CHUNKS_LEN; z++) {
+                    coord_t local_chunk_coord     = {x, y, z};
+                    coord_t old_local_chunk_coord = {x + chunk_coord_diff[0],
+                                                     y + chunk_coord_diff[1],
+                                                     z + chunk_coord_diff[2]};
 
-    for (int64_t x = 0; x < LOADED_CHUNKS_LEN; x++) {
-        for (int64_t y = 0; y < LOADED_CHUNKS_LEN; y++) {
-            for (int64_t z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                coord_t local_chunk_coord     = {x, y, z};
-                coord_t old_local_chunk_coord = {x + chunk_coord_diff[0],
-                                                 y + chunk_coord_diff[1],
-                                                 z + chunk_coord_diff[2]};
+                    // check if chunk has moved out of new area
+                    // free if so
 
-                // check if chunk has moved out of new area
-                // free if so
-
-                bool delete = false;
-                for (size_t i = 0; i < 3; i++) {
-                    if (local_chunk_coord[i] < chunk_coord_diff[i] ||
-                        local_chunk_coord[i] >=
-                            chunk_coord_diff[i] + LOADED_CHUNKS_LEN) {
-                        delete = true;
-                        break;
-                    }
-                }
-
-                if (delete) {
-                    size_t idx = local_chunk_coord_to_index(local_chunk_coord);
-
-                    if (old_loaded_chunks[idx]) {
-                        chunk_free(*old_loaded_chunks[idx]);
-                        free(old_loaded_chunks[idx]);
-                        old_loaded_chunks[idx] = NULL;
-                    }
-                }
-
-                // check if chunk is still within area and can be copied
-
-                bool can_copy = true;
-                for (size_t i = 0; i < 3; i++) {
-                    if (old_local_chunk_coord[i] < 0 ||
-                        old_local_chunk_coord[i] >= LOADED_CHUNKS_LEN) {
-                        can_copy = false;
-                        break;
-                    }
-                }
-
-                // copy chunk
-                if (can_copy) {
-                    chunk_t *old =
-                        old_loaded_chunks[local_chunk_coord_to_index(
-                            old_local_chunk_coord)];
-
-                    world->loaded_chunks[local_chunk_coord_to_index(
-                        local_chunk_coord)] = old;
-
-                }
-                // generate new chunk
-                else {
-                    coord_t chunk_coord;
+                    bool delete = false;
                     for (size_t i = 0; i < 3; i++) {
-                        chunk_coord[i] = local_chunk_coord[i] +
-                                         world->center_chunk_coord[i] -
-                                         RENDER_DISTANCE;
+                        if (local_chunk_coord[i] < chunk_coord_diff[i] ||
+                            local_chunk_coord[i] >=
+                                chunk_coord_diff[i] + LOADED_CHUNKS_LEN) {
+                            delete = true;
+                            break;
+                        }
                     }
 
-                    world->loaded_chunks[local_chunk_coord_to_index(
-                        local_chunk_coord)] = NULL;
+                    if (delete) {
+                        size_t idx =
+                            local_chunk_coord_to_index(local_chunk_coord);
 
-                    load_chunk(world, chunk_coord);
+                        if (old_loaded_chunks[idx]) {
+                            chunk_free(*old_loaded_chunks[idx]);
+                            free(old_loaded_chunks[idx]);
+                            old_loaded_chunks[idx] = NULL;
+                        }
+                    }
+
+                    // check if chunk is still within area and can be copied
+
+                    bool can_copy = true;
+                    for (size_t i = 0; i < 3; i++) {
+                        if (old_local_chunk_coord[i] < 0 ||
+                            old_local_chunk_coord[i] >= LOADED_CHUNKS_LEN) {
+                            can_copy = false;
+                            break;
+                        }
+                    }
+
+                    // copy chunk
+                    if (can_copy) {
+                        chunk_t *old =
+                            old_loaded_chunks[local_chunk_coord_to_index(
+                                old_local_chunk_coord)];
+
+                        world->loaded_chunks[local_chunk_coord_to_index(
+                            local_chunk_coord)] = old;
+                    }
+                    // generate new chunk
+                    else {
+                        coord_t chunk_coord;
+                        for (size_t i = 0; i < 3; i++) {
+                            chunk_coord[i] = local_chunk_coord[i] +
+                                             world->center_chunk_coord[i] -
+                                             RENDER_DISTANCE;
+                        }
+
+                        world->loaded_chunks[local_chunk_coord_to_index(
+                            local_chunk_coord)] = NULL;
+
+                        load_chunk(world, chunk_coord);
+                    }
                 }
             }
+        }
+    }
+
+    // update chunks
+
+    for (size_t i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
+        if (world->loaded_chunks[i]) {
+            chunk_update(world->loaded_chunks[i]);
         }
     }
 }
@@ -383,5 +390,81 @@ void world_draw(world_t *world, camera_t *camera) {
                                GL_UNSIGNED_INT, 0);
             }
         }
+    }
+}
+
+static int floor_div(int a, int b) {
+    return (a >= 0) ? (a / b) : ((a - b + 1) / b);
+}
+
+void world_set_block(world_t *world, coord_t world_coord, uint8_t block) {
+    coord_t chunk_coord = {floor_div(world_coord[0], CHUNK_SIZE),
+                           floor_div(world_coord[1], CHUNK_SIZE),
+                           floor_div(world_coord[2], CHUNK_SIZE)};
+
+    coord_t local = {world_coord[0] - chunk_coord[0] * CHUNK_SIZE,
+                     world_coord[1] - chunk_coord[1] * CHUNK_SIZE,
+                     world_coord[2] - chunk_coord[2] * CHUNK_SIZE};
+
+    coord_t local_chunk_coord = {
+        chunk_coord[0] - (world->center_chunk_coord[0] - RENDER_DISTANCE),
+        chunk_coord[1] - (world->center_chunk_coord[1] - RENDER_DISTANCE),
+        chunk_coord[2] - (world->center_chunk_coord[2] - RENDER_DISTANCE)};
+
+    for (int i = 0; i < 3; i++) {
+        if (local_chunk_coord[i] < 0 ||
+            local_chunk_coord[i] >= LOADED_CHUNKS_LEN)
+            return;
+    }
+
+    size_t chunk_index = local_chunk_coord_to_index(local_chunk_coord);
+
+    chunk_t *chunk = world->loaded_chunks[chunk_index];
+    if (!chunk)
+        return;
+
+    size_t block_index = local[2] * (CHUNK_SIZE * CHUNK_SIZE) +
+                         local[1] * CHUNK_SIZE + local[0];
+
+    uint8_t old_block = chunk->blocks[block_index];
+    if (old_block == block)
+        return;
+
+    chunk->blocks[block_index] = block;
+    chunk->dirty               = true;
+
+    const int dx[6] = {-1, 1, 0, 0, 0, 0};
+    const int dy[6] = {0, 0, -1, 1, 0, 0};
+    const int dz[6] = {0, 0, 0, 0, -1, 1};
+
+    for (int i = 0; i < 6; i++) {
+        int nx = local[0] + dx[i];
+        int ny = local[1] + dy[i];
+        int nz = local[2] + dz[i];
+
+        if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_SIZE ||
+            nz < 0 || nz >= CHUNK_SIZE) {
+            coord_t neighbor_chunk_coord = {local_chunk_coord[0] + dx[i],
+                                            local_chunk_coord[1] + dy[i],
+                                            local_chunk_coord[2] + dz[i]};
+
+            for (int j = 0; j < 3; j++) {
+                if (neighbor_chunk_coord[j] < 0 ||
+                    neighbor_chunk_coord[j] >= LOADED_CHUNKS_LEN)
+                    goto skip_neighbor;
+            }
+
+            size_t nidx = local_chunk_coord_to_index(neighbor_chunk_coord);
+
+            chunk_t *neighbor = world->loaded_chunks[nidx];
+            if (neighbor)
+                neighbor->dirty = true;
+
+        skip_neighbor:;
+        }
+    }
+
+    if (old_block == BLOCK_AIR || block == BLOCK_AIR) {
+        chunk->dirty = true;
     }
 }

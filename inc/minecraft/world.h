@@ -55,5 +55,6 @@ size_t chunk_coord_to_index(const coord_t coord, const coord_t center);
 void world_new(world_t *world);
 void world_update(world_t *world, const camera_t *cam);
 void world_draw(world_t *world, camera_t *camera);
+void world_set_block(world_t *world, coord_t world_coord, uint8_t block);
 
 #endif

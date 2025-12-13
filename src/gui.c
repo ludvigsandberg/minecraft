@@ -19,11 +19,11 @@ static const uint32_t glyph_indices[6] = {0, 1, 2, 2, 3, 0};
 static const int glyph_widths[256] = {
     8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
     8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 2, 8, 2, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, // 0-9
+    4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 2, 6, 2, 8, //
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, 8, // 0-9
     7, 6, 6, 6, 6, 6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, // @, A-O
     6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, // P-Z
-    3, 6, 6, 6, 6, 6, 6, 6, 6, 2, 6, 5, 3, 6, 6, 6, // ', a-o
+    3, 6, 6, 6, 6, 6, 5, 6, 6, 2, 6, 5, 3, 6, 6, 6, // ', a-o
     6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, // p-z
     8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
     8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
@@ -177,10 +177,15 @@ void gui_draw(gui_t *gui, int window_width, int window_height) {
     glBindVertexArray(gui->charset.vertex_array);
 
     glBindBuffer(GL_ARRAY_BUFFER, gui->charset.vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, alen(mesh_vertices) * sizeof(float), NULL,
+                 GL_DYNAMIC_DRAW); // buffer orphaning
     glBufferSubData(GL_ARRAY_BUFFER, 0, alen(mesh_vertices) * sizeof(float),
                     mesh_vertices);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gui->charset.element_buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 alen(mesh_indices) * sizeof(uint32_t), NULL,
+                 GL_DYNAMIC_DRAW); // buffer orphaning
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
                     alen(mesh_indices) * sizeof(uint32_t), mesh_indices);
 
