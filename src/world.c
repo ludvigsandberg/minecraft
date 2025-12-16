@@ -46,15 +46,14 @@ void generate(blocks_t blocks, coord_t chunk_coord) {
     }
 }
 
-static void world_to_local_chunk_coord(const coord_t coord,
-                                       const coord_t center,
-                                       coord_t out_local) {
+void world_to_local_chunk_coord(const coord_t coord, const coord_t center,
+                                coord_t out_local) {
     for (size_t i = 0; i < 3; i++) {
         out_local[i] = coord[i] - center[i] + RENDER_DISTANCE;
     }
 }
 
-static size_t local_chunk_coord_to_index(const coord_t local) {
+size_t local_chunk_coord_to_index(const coord_t local) {
     return local[0] + LOADED_CHUNKS_LEN * local[1] +
            LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * local[2];
 }
@@ -186,10 +185,9 @@ void world_new(world_t *world) {
 }
 
 void world_update(world_t *world, const camera_t *cam) {
-    coord_t camera_world_chunk_coord = {
-        camera_world_chunk_coord[0] = (int64_t)cam->pos[0] / CHUNK_SIZE,
-        camera_world_chunk_coord[1] = (int64_t)cam->pos[1] / CHUNK_SIZE,
-        camera_world_chunk_coord[2] = (int64_t)cam->pos[2] / CHUNK_SIZE};
+    coord_t camera_world_chunk_coord = {(int64_t)cam->pos[0] / CHUNK_SIZE,
+                                        (int64_t)cam->pos[1] / CHUNK_SIZE,
+                                        (int64_t)cam->pos[2] / CHUNK_SIZE};
 
     // poll threads for new chunks
 
@@ -212,7 +210,7 @@ void world_update(world_t *world, const camera_t *cam) {
 
         if (chunk_within_region) {
             chunk_t *chunk = malloc(sizeof(chunk_t));
-            chunk_new(chunk, result->blocks);
+            chunk_new(chunk, result->blocks, result->coord);
 
             world->loaded_chunks[chunk_coord_to_index(
                 result->coord, world->center_chunk_coord)] = chunk;
@@ -330,10 +328,9 @@ void world_update(world_t *world, const camera_t *cam) {
     }
 
     // update chunks
-
     for (size_t i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
         if (world->loaded_chunks[i]) {
-            chunk_update(world->loaded_chunks[i]);
+            chunk_update(world->loaded_chunks[i], world);
         }
     }
 }

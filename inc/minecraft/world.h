@@ -11,12 +11,10 @@
 #include <minecraft/chunk.h>
 #include <minecraft/camera.h>
 
-#define RENDER_DISTANCE   6
+#define RENDER_DISTANCE   3
 #define LOADED_CHUNKS_LEN (RENDER_DISTANCE * 2 + 1)
 #define LOADED_CHUNKS_TOTAL                                                   \
     LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN
-
-typedef int64_t coord_t[3];
 
 typedef struct {
     coord_t coord;
@@ -49,6 +47,11 @@ typedef struct {
         GLint camera_pos;
     } uniform_loc;
 } world_t;
+
+void world_to_local_chunk_coord(const coord_t coord, const coord_t center,
+                                coord_t out_local);
+
+size_t local_chunk_coord_to_index(const coord_t local);
 
 size_t chunk_coord_to_index(const coord_t coord, const coord_t center);
 

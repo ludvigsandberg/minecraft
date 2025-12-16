@@ -1,5 +1,8 @@
 # Minecraft
 
+![C](https://img.shields.io/badge/language-C99-lightgrey)
+![OpenGL](https://img.shields.io/badge/graphics-OpenGL-blue)
+
 Cross-platform Minecraft clone in C99/OpenGL
 
 ![Screenshot](docs/Minecraft%202025-12-12%2014_03_16.png)
@@ -8,6 +11,7 @@ Cross-platform Minecraft clone in C99/OpenGL
 
 - Cubic chunks
 - Infinite terrain generation
+- Dynamic lighting
 
 ## Dependencies
 
