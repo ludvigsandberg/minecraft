@@ -1,4 +1,4 @@
-#include <minecraft/world.h>
+#include <darkcraft/world.h>
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -12,8 +12,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <minecraft/chunk.h>
-#include <minecraft/gl.h>
+#include <darkcraft/chunk.h>
+#include <darkcraft/gl.h>
 
 void generate(blocks_t blocks, coord_t chunk_coord) {
     for (int64_t x = 0; x < CHUNK_SIZE; x++) {

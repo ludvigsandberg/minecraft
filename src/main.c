@@ -8,12 +8,12 @@
 #include <SDL3/SDL.h>
 #include <linmath.h>
 
-#include <minecraft/gl.h>
-#include <minecraft/chunk.h>
-#include <minecraft/world.h>
-#include <minecraft/sky.h>
-#include <minecraft/camera.h>
-#include <minecraft/gui.h>
+#include <darkcraft/gl.h>
+#include <darkcraft/chunk.h>
+#include <darkcraft/world.h>
+#include <darkcraft/sky.h>
+#include <darkcraft/camera.h>
+#include <darkcraft/gui.h>
 
 int main(int argc, char **argv) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     camera_new(&camera);
 
     SDL_Window *window = SDL_CreateWindow(
-        "Minecraft", camera.viewport.width, camera.viewport.height,
+        "Darkcraft", camera.viewport.width, camera.viewport.height,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
     if (!window) {
@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
 
         int vertical = 16;
 
-        gui_text(&gui, 10, 10, "Minecraft");
+        gui_text(&gui, 10, 10, "darkcraft");
         gui_text(&gui, 10, 10 + vertical, "frame %.1fms", delta_time * 1000.f);
 
         gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", camera.pos[0]);

@@ -1,4 +1,4 @@
-#include <minecraft/chunk.h>
+#include <darkcraft/chunk.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 #include <linmath.h>
 #include <meta.h>
 
-#include <minecraft/world.h>
+#include <darkcraft/world.h>
 
 static const float cube_positions[72] = {
     // front

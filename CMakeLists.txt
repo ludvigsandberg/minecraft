@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(Minecraft C)
+project(Darkcraft C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 99)
@@ -9,9 +9,9 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     src/*.c
 )
 
-add_executable(minecraft ${SOURCES})
+add_executable(darkcraft ${SOURCES})
 
-target_include_directories(minecraft PRIVATE
+target_include_directories(darkcraft PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
@@ -31,9 +31,9 @@ target_compile_options(linmath INTERFACE -w)
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE vendor/stb)
 
-target_link_libraries(minecraft PRIVATE SDL3::SDL3 meta glad linmath stb)
+target_link_libraries(darkcraft PRIVATE SDL3::SDL3 meta glad linmath stb)
 
-target_compile_options(minecraft PRIVATE
+target_compile_options(darkcraft PRIVATE
     $<$<C_COMPILER_ID:MSVC>:
         /W4 /WX /permissive-
     >

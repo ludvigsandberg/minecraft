@@ -1,4 +1,4 @@
-#include <minecraft/gl.h>
+#include <darkcraft/gl.h>
 
 #include <stdio.h>
 #include <stdlib.h>

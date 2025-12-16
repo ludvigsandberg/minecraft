@@ -1,4 +1,4 @@
-#include <minecraft/camera.h>
+#include <darkcraft/camera.h>
 
 #include <string.h>
 #include <math.h>

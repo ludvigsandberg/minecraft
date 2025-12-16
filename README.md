@@ -1,9 +1,9 @@
-# Minecraft
+# Darkcraft
 
 ![C](https://img.shields.io/badge/language-C99-lightgrey)
 ![OpenGL](https://img.shields.io/badge/graphics-OpenGL-blue)
 
-Cross-platform Minecraft clone in C99/OpenGL
+Cross-platform Minecraft-esque game in C99/OpenGL
 
 ![Screenshot](docs/Minecraft%202025-12-12%2014_03_16.png)
 
@@ -22,8 +22,8 @@ Cross-platform Minecraft clone in C99/OpenGL
 ## Build
 
 ```sh
-git clone --recursive https://github.com/ludvigsandberg/minecraft
-cd minecraft
+git clone --recursive https://github.com/ludvigsandberg/darkcraft
+cd darkcraft
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```

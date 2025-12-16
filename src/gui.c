@@ -1,4 +1,4 @@
-#include <minecraft/gui.h>
+#include <darkcraft/gui.h>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -6,7 +6,7 @@
 
 #include <stb_image.h>
 
-#include <minecraft/gl.h>
+#include <darkcraft/gl.h>
 
 static const float glyph_vertices[8] = {0.f, 0.f, 1.f, 0.f,
                                         1.f, 1.f, 0.f, 1.f};
