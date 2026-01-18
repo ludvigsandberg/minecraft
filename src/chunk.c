@@ -1,4 +1,4 @@
-#include <darkcraft/chunk.h>
+#include <minecraft/chunk.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -6,10 +6,11 @@
 #include <string.h>
 #include <assert.h>
 
-#include <linmath.h>
-#include <meta.h>
+#include <x/vec.h>
+#include <x/arr.h>
+#include <x/queue.h>
 
-#include <darkcraft/world.h>
+#include <minecraft/world.h>
 
 static const float cube_positions[72] = {
     // front
@@ -104,18 +105,18 @@ static uint8_t get_face_light_level(chunk_t *chunk, int x, int y, int z,
     int chunk_dy = (ny < 0) ? -1 : (ny >= CHUNK_SIZE) ? 1 : 0;
     int chunk_dz = (nz < 0) ? -1 : (nz >= CHUNK_SIZE) ? 1 : 0;
 
-    int neighbor_chunk_x = chunk->coord[0] + chunk_dx;
-    int neighbor_chunk_y = chunk->coord[1] + chunk_dy;
-    int neighbor_chunk_z = chunk->coord[2] + chunk_dz;
+    int neighbor_chunk_x = chunk->coord.nth[0] + chunk_dx;
+    int neighbor_chunk_y = chunk->coord.nth[1] + chunk_dy;
+    int neighbor_chunk_z = chunk->coord.nth[2] + chunk_dz;
 
-    int local_chunk_x =
-        neighbor_chunk_x - (world->center_chunk_coord[0] - RENDER_DISTANCE);
+    int local_chunk_x = neighbor_chunk_x -
+                        (world->center_chunk_coord.nth[0] - RENDER_DISTANCE);
 
-    int local_chunk_y =
-        neighbor_chunk_y - (world->center_chunk_coord[1] - RENDER_DISTANCE);
+    int local_chunk_y = neighbor_chunk_y -
+                        (world->center_chunk_coord.nth[1] - RENDER_DISTANCE);
 
-    int local_chunk_z =
-        neighbor_chunk_z - (world->center_chunk_coord[2] - RENDER_DISTANCE);
+    int local_chunk_z = neighbor_chunk_z -
+                        (world->center_chunk_coord.nth[2] - RENDER_DISTANCE);
 
     if (local_chunk_x < 0 || local_chunk_x >= LOADED_CHUNKS_LEN ||
         local_chunk_y < 0 || local_chunk_y >= LOADED_CHUNKS_LEN ||
@@ -141,11 +142,11 @@ static uint8_t get_face_light_level(chunk_t *chunk, int x, int y, int z,
 static void generate_mesh(chunk_t *chunk, const world_t *world) {
     // batch blocks into mesh
 
-    arr(float) mesh_vertices;
-    arr_new_reserve(mesh_vertices, CHUNK_TOTAL * 6 * 4 * 7);
+    xarr(float) mesh_vertices;
+    xarr_new_reserve(mesh_vertices, CHUNK_TOTAL * 6 * 4 * 7);
 
-    arr(uint32_t) mesh_indices;
-    arr_new_reserve(mesh_indices, CHUNK_TOTAL * 6 * 6);
+    xarr(uint32_t) mesh_indices;
+    xarr_new_reserve(mesh_indices, CHUNK_TOTAL * 6 * 6);
 
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int y = 0; y < CHUNK_SIZE; y++) {
@@ -159,10 +160,10 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                     continue;
                 }
 
-                vec2 uv_offs = {0.f, 0.f};
+                xvec2f32_t uv_offs = {{0.f, 0.f}};
                 switch (block) {
                     case BLOCK_STONE:
-                        uv_offs[0] = 16.f / 256.f;
+                        uv_offs.nth[0] = 16.f / 256.f;
                 }
 
                 // for each face
@@ -180,12 +181,12 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                         static const int face_indices[6] = {0, 1, 2, 2, 3, 0};
 
                         for (int i = 0; i < 6; i++) {
-                            size_t num_vertices = alen(mesh_vertices) / 7;
+                            size_t num_vertices = xalen(mesh_vertices) / 7;
 
                             unsigned int index =
                                 num_vertices + face_indices[i];
 
-                            arr_append(mesh_indices, index);
+                            xarr_append(mesh_indices, index);
                         }
 
                         // append vertices
@@ -202,14 +203,14 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                                 cube_positions[p + 1] + y,
                                 cube_positions[p + 2] + z,
 
-                                cube_uvs[t + 0] / 16.f + uv_offs[0],
-                                cube_uvs[t + 1] / 16.f + uv_offs[1],
+                                cube_uvs[t + 0] / 16.f + uv_offs.nth[0],
+                                cube_uvs[t + 1] / 16.f + uv_offs.nth[1],
 
                                 cube_shadows[face_idx],
 
                                 (float)light};
 
-                            arr_append_n(mesh_vertices, 7, vertex);
+                            xarr_append_n(mesh_vertices, 7, vertex);
                         }
                     }
                 }
@@ -222,34 +223,52 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
     glBindVertexArray(chunk->vertex_array);
 
     glBindBuffer(GL_ARRAY_BUFFER, chunk->vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, alen(mesh_vertices) * sizeof(float), NULL,
+    glBufferData(GL_ARRAY_BUFFER, xalen(mesh_vertices) * sizeof(float), NULL,
                  GL_DYNAMIC_DRAW); // buffer orphaning
-    glBufferSubData(GL_ARRAY_BUFFER, 0, alen(mesh_vertices) * sizeof(float),
+    glBufferSubData(GL_ARRAY_BUFFER, 0, xalen(mesh_vertices) * sizeof(float),
                     mesh_vertices);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk->element_buffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 alen(mesh_indices) * sizeof(uint32_t), NULL,
+                 xalen(mesh_indices) * sizeof(uint32_t), NULL,
                  GL_DYNAMIC_DRAW); // buffer orphaning
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
-                    alen(mesh_indices) * sizeof(uint32_t), mesh_indices);
+                    xalen(mesh_indices) * sizeof(uint32_t), mesh_indices);
 
-    chunk->num_indices = alen(mesh_indices);
+    chunk->num_indices = xalen(mesh_indices);
 
     // cleanup
 
-    arr_free(mesh_indices);
-    arr_free(mesh_vertices);
+    xarr_free(mesh_indices);
+    xarr_free(mesh_vertices);
+}
+
+static int64_t floor_div(int64_t a, int64_t b) {
+    int64_t q = a / b;
+    int64_t r = a % b;
+    if ((r != 0) && ((r < 0) != (b < 0))) {
+        q--;
+    }
+    return q;
+}
+
+static int floor_mod(int64_t a, int64_t b) {
+    int64_t r = a % b;
+    if (r < 0) {
+        r += b;
+    }
+    return r;
 }
 
 static void calculate_light(chunk_t *chunk, const world_t *world) {
-    struct next_block_s {
-        coord_t chunk;
-        coord_t local;
+    struct floodfill_block_info_s {
+        xvec3i64_t chunk;
+        xvec3i64_t local;
+        uint8_t light;
     };
 
-    queue(struct next_block_s) bfs_queue;
-    queue_new(bfs_queue, 4096 * 4);
+    xqueue(struct floodfill_block_info_s) floodfill_queue;
+    xqueue_new(floodfill_queue, 4096 * 4);
 
     // lighting pass 1, skylight
 
@@ -260,15 +279,15 @@ static void calculate_light(chunk_t *chunk, const world_t *world) {
             bool is_topmost_chunk    = true;
 
             // check if chunk above lets through skylight for this column
-            for (int64_t chunk_y = chunk->coord[1] + 1;
-                 chunk_y <= world->center_chunk_coord[1] + RENDER_DISTANCE;
+            for (int64_t chunk_y = chunk->coord.nth[1] + 1;
+                 chunk_y <= world->center_chunk_coord.nth[1] + RENDER_DISTANCE;
                  chunk_y++) {
-                coord_t world_chunk_coord = {chunk->coord[0], chunk_y,
-                                             chunk->coord[2]};
+                xvec3i64_t world_chunk_coord = {
+                    {chunk->coord.nth[0], chunk_y, chunk->coord.nth[2]}};
 
                 const chunk_t *skylight_chunk =
                     world->loaded_chunks[chunk_coord_to_index(
-                        world_chunk_coord, world->center_chunk_coord)];
+                        &world_chunk_coord, &world->center_chunk_coord)];
 
                 // skip if not loaded
                 if (!skylight_chunk) {
@@ -277,7 +296,7 @@ static void calculate_light(chunk_t *chunk, const world_t *world) {
                     is_topmost_chunk = false;
                 }
 
-                size_t i = z * (CHUNK_SIZE * CHUNK_SIZE) + 0 + x;
+                size_t i = idx3d(z, 0, x, CHUNK_SIZE);
 
                 // check if bottom block is transparent and has skylight
                 if (skylight_chunk->blocks[i] == BLOCK_AIR &&
@@ -296,15 +315,15 @@ static void calculate_light(chunk_t *chunk, const world_t *world) {
             // propagate skylight down until opaque block
             // invalidate chunks beneath in the process
 
-            for (int64_t chunk_y = chunk->coord[1];
-                 chunk_y >= world->center_chunk_coord[1] - RENDER_DISTANCE;
+            for (int64_t chunk_y = chunk->coord.nth[1];
+                 chunk_y >= world->center_chunk_coord.nth[1] - RENDER_DISTANCE;
                  chunk_y--) {
-                coord_t world_chunk_coord = {chunk->coord[0], chunk_y,
-                                             chunk->coord[2]};
+                xvec3i64_t world_chunk_coord = {
+                    {chunk->coord.nth[0], chunk_y, chunk->coord.nth[2]}};
 
                 chunk_t *skylight_chunk =
                     world->loaded_chunks[chunk_coord_to_index(
-                        world_chunk_coord, world->center_chunk_coord)];
+                        &world_chunk_coord, &world->center_chunk_coord)];
 
                 // skip if not loaded
                 if (!skylight_chunk) {
@@ -326,17 +345,16 @@ static void calculate_light(chunk_t *chunk, const world_t *world) {
                             skylight_chunk->dirty = true;
                         }
 
-                        // push new skylight to floodfill queue
+                        // push light source to floodfill queue
 
-                        struct next_block_s next;
-                        next.chunk[0] = skylight_chunk->coord[0];
-                        next.chunk[1] = skylight_chunk->coord[1];
-                        next.chunk[2] = skylight_chunk->coord[2];
-                        next.local[0] = x;
-                        next.local[1] = y;
-                        next.local[2] = z;
+                        struct floodfill_block_info_s info;
+                        info.chunk        = skylight_chunk->coord;
+                        info.local.nth[0] = x;
+                        info.local.nth[1] = y;
+                        info.local.nth[2] = z;
+                        info.light        = 15;
 
-                        queue_push(bfs_queue, next);
+                        xqueue_push(floodfill_queue, info);
                     }
                 }
             }
@@ -346,20 +364,101 @@ static void calculate_light(chunk_t *chunk, const world_t *world) {
 
     // lighting pass 2, bfs floodfill
 
-    while (!queue_empty(bfs_queue)) {
-        struct next_block_s current = queue_pop(bfs_queue);
+    while (xqueue_len(floodfill_queue) > 0) {
+        struct floodfill_block_info_s current = xqueue_pop(floodfill_queue);
+
+        if (current.light == 0) {
+            continue;
+        }
+
+        chunk_t *current_chunk = world->loaded_chunks[chunk_coord_to_index(
+            &current.chunk, &world->center_chunk_coord)];
+
+        // for each neighbor block
+        for (size_t i = 0; i < 6; i++) {
+            xvec3i64_t neighbor_world_coord = {
+                {current.chunk.nth[0] * CHUNK_SIZE + current.local.nth[0] +
+                     cube_face_dirs[i][0],
+                 current.chunk.nth[1] * CHUNK_SIZE + current.local.nth[1] +
+                     cube_face_dirs[i][1],
+                 current.chunk.nth[2] * CHUNK_SIZE + current.local.nth[2] +
+                     cube_face_dirs[i][2]}};
+
+            xvec3i64_t neighbor_chunk_coord = {
+                {floor_div(neighbor_world_coord.nth[0], CHUNK_SIZE),
+                 floor_div(neighbor_world_coord.nth[1], CHUNK_SIZE),
+                 floor_div(neighbor_world_coord.nth[2], CHUNK_SIZE)}};
+
+            chunk_t *neighbor_chunk;
+
+            // check if neighbor is in same chunk
+            if (neighbor_chunk_coord.nth[0] == current.chunk.nth[0] &&
+                neighbor_chunk_coord.nth[1] == current.chunk.nth[1] &&
+                neighbor_chunk_coord.nth[2] == current.chunk.nth[2]) {
+                neighbor_chunk = current_chunk;
+            }
+            // else get adjacent chunk
+            else {
+                if (!world_is_chunk_loaded(world, &neighbor_chunk_coord,
+                                           &neighbor_chunk)) {
+                    continue;
+                }
+            }
+
+            xvec3i64_t neighbor_local_coord = {
+                {floor_mod(neighbor_world_coord.nth[0], CHUNK_SIZE),
+                 floor_mod(neighbor_world_coord.nth[1], CHUNK_SIZE),
+                 floor_mod(neighbor_world_coord.nth[2], CHUNK_SIZE)}};
+
+            size_t block_idx =
+                idx3d(neighbor_local_coord.nth[0], neighbor_local_coord.nth[1],
+                      neighbor_local_coord.nth[2], CHUNK_SIZE);
+
+            // skip if opaque
+            if (neighbor_chunk->blocks[block_idx] != BLOCK_AIR) {
+                continue;
+            }
+
+            uint8_t neighbor_light     = neighbor_chunk->light[block_idx];
+            uint8_t new_neighbor_light = current.light - 1;
+
+            // check if neighbor light would increase
+            if (!(new_neighbor_light > neighbor_light)) {
+                continue;
+            }
+
+            neighbor_chunk->light[block_idx] = new_neighbor_light;
+
+            if (neighbor_chunk != current_chunk) {
+                neighbor_chunk->dirty = true;
+            }
+
+            // push neighbor onto queue
+
+            struct floodfill_block_info_s neighbor;
+            neighbor.chunk = neighbor_chunk_coord;
+            neighbor.local = neighbor_local_coord;
+            neighbor.light = new_neighbor_light;
+
+            xqueue_push(floodfill_queue, neighbor);
+        }
     }
 
-    queue_free(bfs_queue);
+    xqueue_free(floodfill_queue);
 }
 
-void chunk_new(chunk_t *chunk, blocks_t blocks, coord_t chunk_coord) {
+void chunk_new(chunk_t *chunk, blocks_t blocks, const xvec3i64_t *chunk_coord,
+               world_t *world) {
+    // init
+
     chunk->dirty = true;
 
     memcpy(chunk->blocks, blocks, CHUNK_TOTAL * sizeof(uint8_t));
-    memcpy(chunk->coord, chunk_coord, sizeof(coord_t));
+    chunk->coord = *chunk_coord;
 
     memset(chunk->light, 0, CHUNK_TOTAL * sizeof(uint8_t));
+
+    calculate_light(chunk, world);
 
     // create buffers
 
@@ -390,10 +489,10 @@ void chunk_new(chunk_t *chunk, blocks_t blocks, coord_t chunk_coord) {
                  GL_DYNAMIC_DRAW); // pre allocate
 }
 
-void chunk_free(chunk_t chunk) {
-    glDeleteBuffers(1, &chunk.element_buffer);
-    glDeleteBuffers(1, &chunk.vertex_buffer);
-    glDeleteVertexArrays(1, &chunk.vertex_array);
+void chunk_free(chunk_t *chunk) {
+    glDeleteBuffers(1, &chunk->element_buffer);
+    glDeleteBuffers(1, &chunk->vertex_buffer);
+    glDeleteVertexArrays(1, &chunk->vertex_array);
 }
 
 void chunk_update(chunk_t *chunk, world_t *world) {

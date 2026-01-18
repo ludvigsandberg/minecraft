@@ -1,11 +1,11 @@
-#include <darkcraft/gl.h>
+#include <minecraft/gl.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-#include <meta.h>
+#include <x/arr.h>
 
 static GLuint compile_shader(GLenum type, const char *src) {
     GLuint shader = glCreateShader(type);
@@ -38,18 +38,18 @@ static GLuint load_shader(GLenum type, const char *path) {
     size_t len = (size_t)ftell(file);
     rewind(file);
 
-    arr(char) src;
-    arr_new_n(src, len);
+    xarr(char) src;
+    xarr_new_n(src, len);
 
     fread(src, 1, len, file);
     fclose(file);
 
     static char nt = '\0';
-    arr_append(src, nt);
+    xarr_append(src, nt);
 
     GLuint shader = compile_shader(type, src);
 
-    arr_free(src);
+    xarr_free(src);
 
     return shader;
 }

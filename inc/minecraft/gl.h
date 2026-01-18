@@ -1,10 +1,7 @@
-#ifndef GFX_H
-#define GFX_H
-
-#include <stddef.h>
+#ifndef GL_H
+#define GL_H
 
 #include <glad/glad.h>
-#include <meta.h>
 
 GLuint shader_program_new(const char *vs_path, const char *fs_path);
 

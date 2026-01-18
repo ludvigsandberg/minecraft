@@ -6,14 +6,14 @@
 
 #include <glad/glad.h>
 #include <SDL3/SDL.h>
-#include <linmath.h>
+#include <x/vec.h>
 
-#include <darkcraft/gl.h>
-#include <darkcraft/chunk.h>
-#include <darkcraft/world.h>
-#include <darkcraft/sky.h>
-#include <darkcraft/camera.h>
-#include <darkcraft/gui.h>
+#include <minecraft/gl.h>
+#include <minecraft/chunk.h>
+#include <minecraft/world.h>
+#include <minecraft/sky.h>
+#include <minecraft/camera.h>
+#include <minecraft/gui.h>
 
 int main(int argc, char **argv) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     camera_new(&camera);
 
     SDL_Window *window = SDL_CreateWindow(
-        "Darkcraft", camera.viewport.width, camera.viewport.height,
+        "minecraft", camera.viewport.width, camera.viewport.height,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
     if (!window) {
@@ -100,27 +100,29 @@ int main(int argc, char **argv) {
 
         // carve out blocks around camera
 
-        coord_t center = {(int64_t)camera.pos[0], (int64_t)camera.pos[1],
-                          (int64_t)camera.pos[2]};
+        xvec3i64_t center = {{(int64_t)camera.pos.nth[0],
+                              (int64_t)camera.pos.nth[1],
+                              (int64_t)camera.pos.nth[2]}};
 
         float radius = 5;
 
-        for (int64_t x = center[0] - radius; x <= center[0] + radius; x++) {
-            for (int64_t y = center[1] - radius; y <= center[1] + radius;
-                 y++) {
-                for (int64_t z = center[2] - radius; z <= center[2] + radius;
-                     z++) {
-                    coord_t diff = {x - center[0], y - center[1],
-                                    z - center[2]};
+        for (int64_t x = center.nth[0] - radius; x <= center.nth[0] + radius;
+             x++) {
+            for (int64_t y = center.nth[1] - radius;
+                 y <= center.nth[1] + radius; y++) {
+                for (int64_t z = center.nth[2] - radius;
+                     z <= center.nth[2] + radius; z++) {
+                    xvec3i64_t diff = {{x - center.nth[0], y - center.nth[1],
+                                        z - center.nth[2]}};
 
-                    float len =
-                        sqrtf((float)(diff[0] * diff[0] + diff[1] * diff[1] +
-                                      diff[2] * diff[2]));
+                    float len = sqrtf((float)(diff.nth[0] * diff.nth[0] +
+                                              diff.nth[1] * diff.nth[1] +
+                                              diff.nth[2] * diff.nth[2]));
 
                     if (len <= radius) {
-                        coord_t current = {x, y, z};
+                        xvec3i64_t current = {{x, y, z}};
 
-                        world_set_block(&world, current, BLOCK_AIR);
+                        world_set_block(&world, &current, BLOCK_AIR);
                     }
                 }
             }
@@ -138,12 +140,12 @@ int main(int argc, char **argv) {
 
         int vertical = 16;
 
-        gui_text(&gui, 10, 10, "darkcraft");
+        gui_text(&gui, 10, 10, "minecraft");
         gui_text(&gui, 10, 10 + vertical, "frame %.1fms", delta_time * 1000.f);
 
-        gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", camera.pos[0]);
-        gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", camera.pos[1]);
-        gui_text(&gui, 10, 10 + 5 * vertical, "z %.2f", camera.pos[2]);
+        gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", camera.pos.nth[0]);
+        gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", camera.pos.nth[1]);
+        gui_text(&gui, 10, 10 + 5 * vertical, "z %.2f", camera.pos.nth[2]);
 
         gui_text(&gui, 10, 10 + 7 * vertical, "yaw %.2f", camera.yaw);
         gui_text(&gui, 10, 10 + 8 * vertical, "pitch %.2f", camera.pitch);

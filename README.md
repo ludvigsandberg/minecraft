@@ -1,15 +1,17 @@
-# Darkcraft
+# minecraft
 
 ![C](https://img.shields.io/badge/language-C99-lightgrey)
 ![OpenGL](https://img.shields.io/badge/graphics-OpenGL-blue)
 
-Cross-platform Minecraft-esque game in C99/OpenGL
+Minecraft in C99/OpenGL
 
-![Screenshot](docs/Minecraft%202025-12-12%2014_03_16.png)
+![Screenshot 1](docs/minecraft%202026-01-18%2010_56_48.png)
+![Screenshot 2](docs/Minecraft%202025-12-12%2017_00_05.png)
 
 ## Features
 
-- Cubic chunks
+- Cross platform
+- Place and remove blocks
 - Infinite terrain generation
 - Dynamic lighting
 

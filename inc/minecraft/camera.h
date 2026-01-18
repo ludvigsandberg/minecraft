@@ -2,18 +2,19 @@
 #define CAMERA_H
 
 #include <SDL3/SDL.h>
-#include <linmath.h>
+#include <x/vec.h>
+#include <x/mat.h>
 
 typedef struct {
-    vec3 pos;
+    xvec3f32_t pos;
     float yaw;
     float pitch;
-    mat4x4 view_matrix;
+    xmat4f32_t view_matrix;
 
     struct {
         int width;
         int height;
-        mat4x4 projection_matrix;
+        xmat4f32_t projection_matrix;
     } viewport;
 } camera_t;
 

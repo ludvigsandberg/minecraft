@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 #include <glad/glad.h>
-#include <linmath.h>
-#include <meta.h>
+#include <x/vec.h>
+#include <x/arr.h>
 
 #define MAX_GLYPHS   4096
 #define GLYPH_PIXELS 12
@@ -24,12 +24,12 @@ typedef struct {
         int h;
     } screen;
 
-    vec3 color;
+    xvec3f32_t color;
 } glyph_t;
 
 typedef struct {
     struct {
-        arr(glyph_t) glyphs;
+        xarr(glyph_t) glyphs;
 
         GLuint texture;
         GLuint texture_uniform_loc;

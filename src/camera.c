@@ -1,14 +1,15 @@
-#include <darkcraft/camera.h>
+#include <minecraft/camera.h>
 
 #include <string.h>
 #include <math.h>
+
+#include <x/mat.h>
 
 #define PI   3.14159265358979323846
 #define PI_2 (PI / 2.0)
 
 void camera_new(camera_t *camera) {
-    vec3 pos = {0.f, 0.f, 0.f};
-    memcpy(camera->pos, pos, sizeof(vec3));
+    camera->pos = (xvec3f32_t){{0.f, 0.f, 0.f}};
 
     camera->pitch = 0.f;
     camera->yaw   = 0.f;
@@ -23,8 +24,8 @@ void camera_update_viewport(camera_t *camera, int width, int height) {
     float fov          = 70.f * PI / 180.f;
     float aspect_ratio = (float)width / (float)height;
 
-    mat4x4_perspective(camera->viewport.projection_matrix, fov, aspect_ratio,
-                       0.1f, 10000.f);
+    xperspective_f32(aspect_ratio, fov, 0.1f, 1000.f,
+                     camera->viewport.projection_matrix);
 }
 void camera_update(camera_t *camera, SDL_Window *window, float delta_time) {
     const bool *keys = SDL_GetKeyboardState(NULL);
@@ -34,34 +35,34 @@ void camera_update(camera_t *camera, SDL_Window *window, float delta_time) {
     float yaw_rad   = camera->yaw * PI / 180.f;
     float pitch_rad = camera->pitch * PI / 180.f;
 
-    vec3 forward = {cosf(pitch_rad) * sinf(yaw_rad), sinf(pitch_rad),
-                    cosf(pitch_rad) * cosf(yaw_rad)};
+    xvec3f32_t forward = {{cosf(pitch_rad) * sinf(yaw_rad), sinf(pitch_rad),
+                           cosf(pitch_rad) * cosf(yaw_rad)}};
 
-    vec3 right = {sinf(yaw_rad - PI_2), 0.f, cosf(yaw_rad - PI_2)};
+    xvec3f32_t right = {{sinf(yaw_rad - PI_2), 0.f, cosf(yaw_rad - PI_2)}};
 
     if (keys[SDL_SCANCODE_W]) {
-        camera->pos[0] += forward[0] * speed;
-        camera->pos[1] += forward[1] * speed;
-        camera->pos[2] += forward[2] * speed;
+        camera->pos.nth[0] += forward.nth[0] * speed;
+        camera->pos.nth[1] += forward.nth[1] * speed;
+        camera->pos.nth[2] += forward.nth[2] * speed;
     }
     if (keys[SDL_SCANCODE_S]) {
-        camera->pos[0] -= forward[0] * speed;
-        camera->pos[1] -= forward[1] * speed;
-        camera->pos[2] -= forward[2] * speed;
+        camera->pos.nth[0] -= forward.nth[0] * speed;
+        camera->pos.nth[1] -= forward.nth[1] * speed;
+        camera->pos.nth[2] -= forward.nth[2] * speed;
     }
     if (keys[SDL_SCANCODE_A]) {
-        camera->pos[0] -= right[0] * speed;
-        camera->pos[2] -= right[2] * speed;
+        camera->pos.nth[0] -= right.nth[0] * speed;
+        camera->pos.nth[2] -= right.nth[2] * speed;
     }
     if (keys[SDL_SCANCODE_D]) {
-        camera->pos[0] += right[0] * speed;
-        camera->pos[2] += right[2] * speed;
+        camera->pos.nth[0] += right.nth[0] * speed;
+        camera->pos.nth[2] += right.nth[2] * speed;
     }
     if (keys[SDL_SCANCODE_SPACE]) {
-        camera->pos[1] += speed;
+        camera->pos.nth[1] += speed;
     }
     if (keys[SDL_SCANCODE_LSHIFT]) {
-        camera->pos[1] -= speed;
+        camera->pos.nth[1] -= speed;
     }
 
     float look_speed = 95.f * delta_time;
@@ -86,9 +87,9 @@ void camera_update(camera_t *camera, SDL_Window *window, float delta_time) {
         camera->pitch = -89.f;
     }
 
-    vec3 center;
-    vec3_add(center, camera->pos, forward);
+    xvec3f32_t center;
+    xvec_add(camera->pos, forward, center);
 
-    mat4x4_look_at(camera->view_matrix, camera->pos, center,
-                   (vec3){0.f, 1.f, 0.f});
+    xvec3f32_t up = {{0.f, 1.f, 0.f}};
+    xlook_at_f32(camera->pos, center, up, camera->view_matrix);
 }

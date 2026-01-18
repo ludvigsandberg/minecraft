@@ -1,8 +1,10 @@
 #ifndef SKY_H
 #define SKY_H
 
-#include <darkcraft/gl.h>
-#include <darkcraft/camera.h>
+#include <glad/glad.h>
+
+#include <minecraft/gl.h>
+#include <minecraft/camera.h>
 
 typedef struct {
     GLuint shader_program;
@@ -11,7 +13,6 @@ typedef struct {
 
     struct {
         GLint inv_view_matrix;
-        GLint inv_projection_matrix;
     } uniform_loc;
 } sky_t;
 
