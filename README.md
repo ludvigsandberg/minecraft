@@ -24,8 +24,8 @@ Minecraft in C99/OpenGL
 ## Build
 
 ```sh
-git clone --recursive https://github.com/ludvigsandberg/darkcraft
-cd darkcraft
+git clone --recursive https://github.com/ludvigsandberg/minecraft
+cd minecraft
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```
