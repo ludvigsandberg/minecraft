@@ -12,7 +12,7 @@
 #include <minecraft/chunk.h>
 #include <minecraft/camera.h>
 
-#define RENDER_DISTANCE   5
+#define RENDER_DISTANCE   2
 #define LOADED_CHUNKS_LEN (RENDER_DISTANCE * 2 + 1)
 #define LOADED_CHUNKS_TOTAL                                                   \
     LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN

@@ -29,7 +29,8 @@ typedef struct {
 
     blocks_t blocks;
 
-    // light intensity 0-15
+    // first 4 bits: skylight
+    // last 4 bits: block light
     uint8_t light[CHUNK_TOTAL];
 
     // mesh needs to be regenerated
@@ -45,5 +46,15 @@ void chunk_new(chunk_t *chunk, blocks_t blocks, const xvec3i64_t *chunk_coord,
                struct world_t *world);
 void chunk_free(chunk_t *chunk);
 void chunk_update(chunk_t *chunk, const struct world_t *world);
+
+void chunk_calculate_light(chunk_t *chunk, const struct world_t *world);
+
+uint8_t chunk_get_skylight(const chunk_t *chunk, const xvec3i64_t *block_pos);
+void chunk_set_skylight(chunk_t *chunk, const xvec3i64_t *block_pos,
+                        uint8_t intensity);
+uint8_t chunk_get_block_light(const chunk_t *chunk,
+                              const xvec3i64_t *block_pos);
+void chunk_set_block_light(chunk_t *chunk, const xvec3i64_t *block_pos,
+                           uint8_t intensity);
 
 #endif

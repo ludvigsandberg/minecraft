@@ -8,7 +8,6 @@
 
 #include <x/vec.h>
 #include <x/arr.h>
-#include <x/queue.h>
 
 #include <minecraft/world.h>
 
@@ -129,7 +128,7 @@ static uint8_t get_face_light_level(chunk_t *chunk, int x, int y, int z,
 
     chunk_t *neighbor = world->loaded_chunks[index];
     if (!neighbor)
-        return 15;
+        return 0;
 
     int lx = (nx + CHUNK_SIZE) % CHUNK_SIZE;
     int ly = (ny + CHUNK_SIZE) % CHUNK_SIZE;
@@ -243,210 +242,6 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
     xarr_free(mesh_vertices);
 }
 
-static int64_t floor_div(int64_t a, int64_t b) {
-    int64_t q = a / b;
-    int64_t r = a % b;
-    if ((r != 0) && ((r < 0) != (b < 0))) {
-        q--;
-    }
-    return q;
-}
-
-static int floor_mod(int64_t a, int64_t b) {
-    int64_t r = a % b;
-    if (r < 0) {
-        r += b;
-    }
-    return r;
-}
-
-static void calculate_light(chunk_t *chunk, const world_t *world) {
-    struct floodfill_block_info_s {
-        xvec3i64_t chunk;
-        xvec3i64_t local;
-        uint8_t light;
-    };
-
-    xqueue(struct floodfill_block_info_s) floodfill_queue;
-    xqueue_new(floodfill_queue, 4096 * 4);
-
-    // lighting pass 1, skylight
-
-    // for each column
-    for (int64_t x = 0; x < CHUNK_SIZE; x++) {
-        for (int64_t z = 0; z < CHUNK_SIZE; z++) {
-            bool column_has_sunlight = false;
-            bool is_topmost_chunk    = true;
-
-            // check if chunk above lets through skylight for this column
-            for (int64_t chunk_y = chunk->coord.nth[1] + 1;
-                 chunk_y <= world->center_chunk_coord.nth[1] + RENDER_DISTANCE;
-                 chunk_y++) {
-                xvec3i64_t world_chunk_coord = {
-                    {chunk->coord.nth[0], chunk_y, chunk->coord.nth[2]}};
-
-                const chunk_t *skylight_chunk =
-                    world->loaded_chunks[chunk_coord_to_index(
-                        &world_chunk_coord, &world->center_chunk_coord)];
-
-                // skip if not loaded
-                if (!skylight_chunk) {
-                    continue;
-                } else {
-                    is_topmost_chunk = false;
-                }
-
-                size_t i = idx3d(z, 0, x, CHUNK_SIZE);
-
-                // check if bottom block is transparent and has skylight
-                if (skylight_chunk->blocks[i] == BLOCK_AIR &&
-                    skylight_chunk->light[i] == 15) {
-                    column_has_sunlight = true;
-                    break;
-                }
-            }
-
-            if (is_topmost_chunk) {
-                column_has_sunlight = true;
-            } else if (!column_has_sunlight) {
-                continue;
-            }
-
-            // propagate skylight down until opaque block
-            // invalidate chunks beneath in the process
-
-            for (int64_t chunk_y = chunk->coord.nth[1];
-                 chunk_y >= world->center_chunk_coord.nth[1] - RENDER_DISTANCE;
-                 chunk_y--) {
-                xvec3i64_t world_chunk_coord = {
-                    {chunk->coord.nth[0], chunk_y, chunk->coord.nth[2]}};
-
-                chunk_t *skylight_chunk =
-                    world->loaded_chunks[chunk_coord_to_index(
-                        &world_chunk_coord, &world->center_chunk_coord)];
-
-                // skip if not loaded
-                if (!skylight_chunk) {
-                    continue;
-                }
-
-                for (int64_t y = 15; y >= 0; y--) {
-                    size_t i =
-                        z * (CHUNK_SIZE * CHUNK_SIZE) + y * CHUNK_SIZE + x;
-
-                    if (skylight_chunk->blocks[i] != BLOCK_AIR) {
-                        goto propagate_skylight_end;
-                    }
-
-                    if (skylight_chunk->light[i] != 15) {
-                        skylight_chunk->light[i] = 15;
-
-                        if (skylight_chunk != chunk) {
-                            skylight_chunk->dirty = true;
-                        }
-
-                        // push light source to floodfill queue
-
-                        struct floodfill_block_info_s info;
-                        info.chunk        = skylight_chunk->coord;
-                        info.local.nth[0] = x;
-                        info.local.nth[1] = y;
-                        info.local.nth[2] = z;
-                        info.light        = 15;
-
-                        xqueue_push(floodfill_queue, info);
-                    }
-                }
-            }
-        propagate_skylight_end:;
-        }
-    }
-
-    // lighting pass 2, bfs floodfill
-
-    while (xqueue_len(floodfill_queue) > 0) {
-        struct floodfill_block_info_s current = xqueue_pop(floodfill_queue);
-
-        if (current.light == 0) {
-            continue;
-        }
-
-        chunk_t *current_chunk = world->loaded_chunks[chunk_coord_to_index(
-            &current.chunk, &world->center_chunk_coord)];
-
-        // for each neighbor block
-        for (size_t i = 0; i < 6; i++) {
-            xvec3i64_t neighbor_world_coord = {
-                {current.chunk.nth[0] * CHUNK_SIZE + current.local.nth[0] +
-                     cube_face_dirs[i][0],
-                 current.chunk.nth[1] * CHUNK_SIZE + current.local.nth[1] +
-                     cube_face_dirs[i][1],
-                 current.chunk.nth[2] * CHUNK_SIZE + current.local.nth[2] +
-                     cube_face_dirs[i][2]}};
-
-            xvec3i64_t neighbor_chunk_coord = {
-                {floor_div(neighbor_world_coord.nth[0], CHUNK_SIZE),
-                 floor_div(neighbor_world_coord.nth[1], CHUNK_SIZE),
-                 floor_div(neighbor_world_coord.nth[2], CHUNK_SIZE)}};
-
-            chunk_t *neighbor_chunk;
-
-            // check if neighbor is in same chunk
-            if (neighbor_chunk_coord.nth[0] == current.chunk.nth[0] &&
-                neighbor_chunk_coord.nth[1] == current.chunk.nth[1] &&
-                neighbor_chunk_coord.nth[2] == current.chunk.nth[2]) {
-                neighbor_chunk = current_chunk;
-            }
-            // else get adjacent chunk
-            else {
-                if (!world_is_chunk_loaded(world, &neighbor_chunk_coord,
-                                           &neighbor_chunk)) {
-                    continue;
-                }
-            }
-
-            xvec3i64_t neighbor_local_coord = {
-                {floor_mod(neighbor_world_coord.nth[0], CHUNK_SIZE),
-                 floor_mod(neighbor_world_coord.nth[1], CHUNK_SIZE),
-                 floor_mod(neighbor_world_coord.nth[2], CHUNK_SIZE)}};
-
-            size_t block_idx =
-                idx3d(neighbor_local_coord.nth[0], neighbor_local_coord.nth[1],
-                      neighbor_local_coord.nth[2], CHUNK_SIZE);
-
-            // skip if opaque
-            if (neighbor_chunk->blocks[block_idx] != BLOCK_AIR) {
-                continue;
-            }
-
-            uint8_t neighbor_light     = neighbor_chunk->light[block_idx];
-            uint8_t new_neighbor_light = current.light - 1;
-
-            // check if neighbor light would increase
-            if (!(new_neighbor_light > neighbor_light)) {
-                continue;
-            }
-
-            neighbor_chunk->light[block_idx] = new_neighbor_light;
-
-            if (neighbor_chunk != current_chunk) {
-                neighbor_chunk->dirty = true;
-            }
-
-            // push neighbor onto queue
-
-            struct floodfill_block_info_s neighbor;
-            neighbor.chunk = neighbor_chunk_coord;
-            neighbor.local = neighbor_local_coord;
-            neighbor.light = new_neighbor_light;
-
-            xqueue_push(floodfill_queue, neighbor);
-        }
-    }
-
-    xqueue_free(floodfill_queue);
-}
-
 void chunk_new(chunk_t *chunk, blocks_t blocks, const xvec3i64_t *chunk_coord,
                world_t *world) {
     // init
@@ -456,11 +251,7 @@ void chunk_new(chunk_t *chunk, blocks_t blocks, const xvec3i64_t *chunk_coord,
     memcpy(chunk->blocks, blocks, CHUNK_TOTAL * sizeof(uint8_t));
     chunk->coord = *chunk_coord;
 
-    memset(chunk->light, 0, CHUNK_TOTAL * sizeof(uint8_t));
-
-    calculate_light(chunk, world);
-
-    // create buffers
+        // create buffers
 
     glGenVertexArrays(1, &chunk->vertex_array);
     glBindVertexArray(chunk->vertex_array);
@@ -497,7 +288,7 @@ void chunk_free(chunk_t *chunk) {
 
 void chunk_update(chunk_t *chunk, world_t *world) {
     if (chunk->dirty) {
-        calculate_light(chunk, world);
+        chunk_calculate_light(chunk, world);
         generate_mesh(chunk, world);
 
         chunk->dirty = false;

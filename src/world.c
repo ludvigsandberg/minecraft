@@ -37,10 +37,18 @@ void generate(blocks_t blocks, const xvec3i64_t *chunk_coord) {
                 float n =
                     stb_perlin_noise3(noise_x, noise_y, noise_z, 0, 0, 0);
 
-                if (n > .3f) {
-                    *block = n > .31f ? BLOCK_STONE : BLOCK_GRASS;
+                if (world_coord.xyz.y < -10) {
+                    if (n > 0.2f) {
+                        *block = BLOCK_AIR;
+                    } else {
+                        *block = BLOCK_STONE;
+                    }
                 } else {
-                    *block = BLOCK_AIR;
+                    if (n > 0.3f) {
+                        *block = (n > 0.31f) ? BLOCK_STONE : BLOCK_GRASS;
+                    } else {
+                        *block = BLOCK_AIR;
+                    }
                 }
             }
         }
@@ -49,7 +57,6 @@ void generate(blocks_t blocks, const xvec3i64_t *chunk_coord) {
 
 bool world_is_chunk_loaded(const world_t *world, const xvec3i64_t *chunk_coord,
                            chunk_t **chunk) {
-    // bounds check
     for (size_t i = 0; i < 3; i++) {
         if (chunk_coord->nth[i] <
                 world->center_chunk_coord.nth[i] - RENDER_DISTANCE ||
@@ -59,11 +66,18 @@ bool world_is_chunk_loaded(const world_t *world, const xvec3i64_t *chunk_coord,
         }
     }
 
-    *chunk = world->loaded_chunks[chunk_coord_to_index(
+    chunk_t *chunk_maybe_loaded = world->loaded_chunks[chunk_coord_to_index(
         chunk_coord, &world->center_chunk_coord)];
 
-    // check if chunk is loaded
-    return *chunk != NULL;
+    if (!chunk_maybe_loaded) {
+        return false;
+    }
+
+    if (chunk) {
+        *chunk = chunk_maybe_loaded;
+    }
+
+    return true;
 }
 
 void world_to_local_chunk_coord(const xvec3i64_t *coord,
@@ -305,6 +319,20 @@ void world_update(world_t *world, const camera_t *cam) {
                             local_chunk_coord_to_index(&local_chunk_coord);
 
                         if (old_loaded_chunks[idx]) {
+                            // set chunk below to dirty
+
+                            xvec3i64_t below_chunk_coord =
+                                old_loaded_chunks[idx]->coord;
+                            below_chunk_coord.xyz.y--;
+
+                            chunk_t *below_chunk;
+
+                            if (world_is_chunk_loaded(
+                                    world, &below_chunk_coord, &below_chunk)) {
+                                below_chunk->dirty = true;
+                            }
+
+                            // free
                             chunk_free(old_loaded_chunks[idx]);
                             free(old_loaded_chunks[idx]);
                             old_loaded_chunks[idx] = NULL;
