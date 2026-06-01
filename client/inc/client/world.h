@@ -5,12 +5,10 @@
 #include <stdbool.h>
 
 #include <SDL3/SDL_thread.h>
-#include <x/vec.h>
-#include <x/arr.h>
 
-#include <minecraft/gl.h>
-#include <minecraft/chunk.h>
-#include <minecraft/camera.h>
+#include "client/gl.h"
+#include "client/chunk.h"
+#include "client/camera.h"
 
 #define RENDER_DISTANCE   2
 #define LOADED_CHUNKS_LEN (RENDER_DISTANCE * 2 + 1)
