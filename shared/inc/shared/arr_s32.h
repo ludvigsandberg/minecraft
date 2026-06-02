@@ -1,5 +1,5 @@
-#ifndef SHARED_ARR_s32_H
-#define SHARED_ARR_s32_H
+#ifndef SHARED_ARR_S32_H
+#define SHARED_ARR_S32_H
 
 #include <stddef.h>
 

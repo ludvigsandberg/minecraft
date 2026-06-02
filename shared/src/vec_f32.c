@@ -1,4 +1,4 @@
-/* Generated from shared/src/vec_s32.c - DO NOT EDIT */
+/* This file was generated. Do not edit. */
 
 #include "shared/vec_f32.h"
 

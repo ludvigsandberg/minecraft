@@ -1,9 +1,9 @@
-/* Generated from shared/inc/shared/vec_s32.h - DO NOT EDIT */
+/* This file was generated. Do not edit. */
 
-#ifndef SHARED_S32_VEC_H
-#define SHARED_S32_VEC_H
+#ifndef SHARED_VEC_F32_H
+#define SHARED_VEC_F32_H
 
-#include "shared/types_f32.h"
+#include "shared/types.h"
 
 typedef union vec2_f32_u {
     struct {

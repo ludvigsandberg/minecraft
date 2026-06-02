@@ -1,5 +1,5 @@
-#ifndef SHARED_S32_VEC_H
-#define SHARED_S32_VEC_H
+#ifndef SHARED_VEC_S32_H
+#define SHARED_VEC_S32_H
 
 #include "shared/types.h"
 

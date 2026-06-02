@@ -1,4 +1,4 @@
-/* Generated from shared/src/arr_s32.c - DO NOT EDIT */
+/* This file was generated. Do not edit. */
 
 #include "shared/arr_u32.h"
 

@@ -1,11 +1,11 @@
-/* Generated from shared/inc/shared/arr_s32.h - DO NOT EDIT */
+/* This file was generated. Do not edit. */
 
-#ifndef SHARED_ARR_u32_H
-#define SHARED_ARR_u32_H
+#ifndef SHARED_ARR_U32_H
+#define SHARED_ARR_U32_H
 
 #include <stddef.h>
 
-#include "shared/types_u32.h"
+#include "shared/types.h"
 #include "shared/mem.h"
 
 typedef struct arr_u32_s {
