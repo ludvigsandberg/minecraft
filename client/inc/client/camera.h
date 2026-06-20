@@ -1,9 +1,14 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+/*****************************************************************************
+ * File:        camera.h
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: 3D free-flight camera controller.
+ *****************************************************************************/
+
+#ifndef CLIENT_CAMERA_H
+#define CLIENT_CAMERA_H
 
 #include <SDL3/SDL.h>
-#include <x/vec.h>
-#include <x/mat.h>
 
 typedef struct {
     xvec3f32_t pos;

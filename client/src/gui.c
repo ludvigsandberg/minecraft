@@ -1,4 +1,11 @@
-#include <minecraft/gui.h>
+/*****************************************************************************
+ * File:        gui.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#include "client/gui.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -6,7 +13,7 @@
 
 #include <stb_image.h>
 
-#include <minecraft/gl.h>
+#include "client/gl.h"
 
 static const float glyph_vertices[8] = {0.f, 0.f, 1.f, 0.f,
                                         1.f, 1.f, 0.f, 1.f};

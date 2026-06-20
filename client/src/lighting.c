@@ -1,10 +1,15 @@
-#include <minecraft/chunk.h>
+/*****************************************************************************
+ * File:        lighting.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#include "client/chunk.h"
 
 #include <stdio.h>
 
-#include <x/queue.h>
-
-#include <minecraft/world.h>
+#include "client/world.h"
 
 static const xvec3i64_t dirs[6] = {
     // front

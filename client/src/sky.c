@@ -1,6 +1,11 @@
-#include <minecraft/sky.h>
+/*****************************************************************************
+ * File:        sky.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
 
-#include <x/mat.h>
+#include "client/sky.h"
 
 static const float vertices[] = {-1.f, 1.f, -1.f, -1.f, 1.f, -1.f,
                                  -1.f, 1.f, 1.f,  -1.f, 1.f, 1.f};

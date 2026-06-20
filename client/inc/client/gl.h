@@ -1,5 +1,12 @@
-#ifndef GL_H
-#define GL_H
+/*****************************************************************************
+ * File:        gl.h
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#ifndef CLIENT_GL_H
+#define CLIENT_GL_H
 
 #include <glad/glad.h>
 

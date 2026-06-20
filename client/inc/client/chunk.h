@@ -1,12 +1,18 @@
-#ifndef CHUNK_H
-#define CHUNK_H
+/*****************************************************************************
+ * File:        chunk.h
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#ifndef CLIENT_CHUNK_H
+#define CLIENT_CHUNK_H
 
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 
 #include <glad/glad.h>
-#include <x/vec.h>
 
 #define BLOCK_AIR   0
 #define BLOCK_GRASS 1

@@ -1,11 +1,16 @@
-#ifndef MINECRAFT_GUI_H
-#define MINECRAFT_GUI_H
+/*****************************************************************************
+ * File:        gui.h
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#ifndef CLIENT_GUI_H
+#define CLIENT_GUI_H
 
 #include <stdint.h>
 
 #include <glad/glad.h>
-#include <x/vec.h>
-#include <x/arr.h>
 
 #define MAX_GLYPHS   4096
 #define GLYPH_PIXELS 12

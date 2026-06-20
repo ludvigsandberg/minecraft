@@ -1,4 +1,11 @@
-#include <minecraft/world.h>
+/*****************************************************************************
+ * File:        world.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#include "client/world.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -12,8 +19,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <minecraft/chunk.h>
-#include <minecraft/gl.h>
+#include "client/chunk.h"
+#include "client/gl.h"
 
 void generate(blocks_t blocks, const xvec3i64_t *chunk_coord) {
     for (int64_t x = 0; x < CHUNK_SIZE; x++) {

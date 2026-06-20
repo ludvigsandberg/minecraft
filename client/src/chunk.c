@@ -1,4 +1,11 @@
-#include <minecraft/chunk.h>
+/*****************************************************************************
+ * File:        chunk.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#include "client/chunk.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -6,10 +13,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include <x/vec.h>
-#include <x/arr.h>
-
-#include <minecraft/world.h>
+#include "client/world.h"
 
 static const float cube_positions[72] = {
     // front
@@ -251,7 +255,7 @@ void chunk_new(chunk_t *chunk, blocks_t blocks, const xvec3i64_t *chunk_coord,
     memcpy(chunk->blocks, blocks, CHUNK_TOTAL * sizeof(uint8_t));
     chunk->coord = *chunk_coord;
 
-        // create buffers
+    // create buffers
 
     glGenVertexArrays(1, &chunk->vertex_array);
     glBindVertexArray(chunk->vertex_array);

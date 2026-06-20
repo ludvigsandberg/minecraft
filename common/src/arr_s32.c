@@ -1,10 +1,17 @@
+/*****************************************************************************
+ * File:        arr_s32.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
 #include "common/arr_s32.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-#include "common/preproc.h"
+#include "common/pp.h"
 
 s32 *arr_s32_at(arr_s32_t *arr, size_t i) {
     assert(arr);

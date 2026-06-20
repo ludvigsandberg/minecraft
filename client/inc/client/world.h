@@ -1,5 +1,12 @@
-#ifndef WORLD_H
-#define WORLD_H
+/*****************************************************************************
+ * File:        world.h
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#ifndef CLIENT_WORLD_H
+#define CLIENT_WORLD_H
 
 #include <stdint.h>
 #include <stdbool.h>

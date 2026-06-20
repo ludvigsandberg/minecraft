@@ -1,3 +1,10 @@
+/*****************************************************************************
+ * File:        main.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,14 +13,13 @@
 
 #include <glad/glad.h>
 #include <SDL3/SDL.h>
-#include <x/vec.h>
 
-#include <minecraft/gl.h>
-#include <minecraft/chunk.h>
-#include <minecraft/world.h>
-#include <minecraft/sky.h>
-#include <minecraft/camera.h>
-#include <minecraft/gui.h>
+#include "client/gl.h"
+#include "client/chunk.h"
+#include "client/world.h"
+#include "client/sky.h"
+#include "client/camera.h"
+#include "client/gui.h"
 
 int main(int argc, char **argv) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {

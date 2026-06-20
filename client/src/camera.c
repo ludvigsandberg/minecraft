@@ -1,9 +1,14 @@
-#include <minecraft/camera.h>
+/*****************************************************************************
+ * File:        camera.c
+ * Author:      ludvigsandberg
+ * Date:        2026-06-20
+ * Description: -
+ *****************************************************************************/
+
+#include "client/camera.h"
 
 #include <string.h>
 #include <math.h>
-
-#include <x/mat.h>
 
 #define PI   3.14159265358979323846
 #define PI_2 (PI / 2.0)
