@@ -1,7 +1,7 @@
-#ifndef SHARED_VEC_S32_H
-#define SHARED_VEC_S32_H
+#ifndef COMMON_VEC_S32_H
+#define COMMON_VEC_S32_H
 
-#include "shared/types.h"
+#include "common/types.h"
 
 typedef union vec2_s32_u {
     struct {

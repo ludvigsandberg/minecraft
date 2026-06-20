@@ -1,10 +1,10 @@
-#ifndef SHARED_ARR_S32_H
-#define SHARED_ARR_S32_H
+#ifndef COMMON_ARR_S32_H
+#define COMMON_ARR_S32_H
 
 #include <stddef.h>
 
-#include "shared/types.h"
-#include "shared/mem.h"
+#include "common/types.h"
+#include "common/mem.h"
 
 typedef struct arr_s32_s {
     s32 *data;

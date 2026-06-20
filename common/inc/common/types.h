@@ -1,5 +1,5 @@
-#ifndef SHARED_TYPES_H
-#define SHARED_TYPES_H
+#ifndef COMMON_TYPES_H
+#define COMMON_TYPES_H
 
 #define TRUE  1
 #define FALSE 0

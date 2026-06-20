@@ -1,4 +1,4 @@
-#include "shared/vec_s32.h"
+#include "common/vec_s32.h"
 
 #include <math.h>
 #include <assert.h>

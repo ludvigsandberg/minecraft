@@ -1,11 +1,11 @@
-#include "shared/mem.h"
+#include "common/mem.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 
 #define REASONABLE_MAX_ALLOC 10000000
 
-void *safe_malloc(size_t size) {
+void *checked_malloc(size_t size) {
     void *p;
 
     assert(size < REASONABLE_MAX_ALLOC);
@@ -22,7 +22,7 @@ void *safe_malloc(size_t size) {
     return p;
 }
 
-void *safe_calloc(size_t n, size_t size) {
+void *checked_calloc(size_t n, size_t size) {
     void *p;
 
     assert((n * size) < REASONABLE_MAX_ALLOC);
@@ -39,7 +39,7 @@ void *safe_calloc(size_t n, size_t size) {
     return p;
 }
 
-void *safe_realloc(void *ptr, size_t size) {
+void *checked_realloc(void *ptr, size_t size) {
     void *p;
 
     assert(size < REASONABLE_MAX_ALLOC);

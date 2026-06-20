@@ -12,23 +12,6 @@
 
 typedef struct {
     struct {
-        int x;
-        int y;
-        int w; // glyph width 1-8px
-    } charset;
-
-    struct {
-        int x;
-        int y;
-        int w;
-        int h;
-    } screen;
-
-    xvec3f32_t color;
-} glyph_t;
-
-typedef struct {
-    struct {
         xarr(glyph_t) glyphs;
 
         GLuint texture;

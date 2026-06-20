@@ -1,10 +1,10 @@
-#include "shared/arr_s32.h"
+#include "common/arr_s32.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-#include "shared/preproc.h"
+#include "common/preproc.h"
 
 s32 *arr_s32_at(arr_s32_t *arr, size_t i) {
     assert(arr);
