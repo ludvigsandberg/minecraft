@@ -11,7 +11,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "common/mem.h"
 #include "common/pp.h"
@@ -22,74 +21,46 @@
         size_t head;                                                          \
         size_t size;                                                          \
         size_t cap;                                                           \
-    } queue_##NAME##_t;                                                       \
-                                                                              \
-    TYPE *queue_##NAME##_front(queue_##NAME##_t *q);                          \
-    size_t queue_##NAME##_size(const queue_##NAME##_t *q);                    \
-                                                                              \
-    void queue_##NAME##_new(queue_##NAME##_t *q);                             \
-    void queue_##NAME##_free(queue_##NAME##_t *q);                            \
-    void queue_##NAME##_push(queue_##NAME##_t *q, const TYPE *val);           \
-    void queue_##NAME##_pop(queue_##NAME##_t *q);
+    } queue_##NAME##_t;
 
-#define QUEUE_DEF(TYPE, NAME)                                                 \
-    TYPE *queue_##NAME##_front(queue_##NAME##_t *q) {                         \
-        assert(q);                                                            \
-        assert(q->size > 0);                                                  \
-        return q->data + q->head;                                             \
-    }                                                                         \
-                                                                              \
-    size_t queue_##NAME##_size(const queue_##NAME##_t *q) {                   \
-        assert(q);                                                            \
-        return q->size;                                                       \
-    }                                                                         \
-                                                                              \
-    void queue_##NAME##_new(queue_##NAME##_t *q) {                            \
-        assert(q);                                                            \
-        q->data = NULL;                                                       \
-        q->head = 0;                                                          \
-        q->size = 0;                                                          \
-        q->cap  = 0;                                                          \
-    }                                                                         \
-                                                                              \
-    void queue_##NAME##_free(queue_##NAME##_t *q) {                           \
-        assert(q);                                                            \
-        free(q->data);                                                        \
-    }                                                                         \
-                                                                              \
-    void queue_##NAME##_push(queue_##NAME##_t *q, const TYPE *val) {          \
-        TYPE *new_data;                                                       \
-        size_t new_cap;                                                       \
-        size_t first;                                                         \
-        size_t tail;                                                          \
-        assert(q);                                                            \
-        assert(val);                                                          \
-        if (q->size == q->cap) {                                              \
-            new_cap  = q->cap ? q->cap * 2 : 4;                               \
-            new_data = checked_malloc(new_cap * sizeof(TYPE));                \
-            if (q->size > 0) {                                                \
-                first = MIN(q->size, q->cap - q->head);                       \
-                memcpy(new_data, q->data + q->head, first * sizeof(TYPE));    \
-                if (q->size > first) {                                        \
-                    memcpy(new_data + first, q->data,                         \
-                           (q->size - first) * sizeof(TYPE));                 \
-                }                                                             \
+#define QUEUE_FRONT(Q) ((Q)->data + (Q)->head)
+#define QUEUE_SIZE(Q)  ((Q)->size)
+
+#define QUEUE_NEW(Q)                                                          \
+    do {                                                                      \
+        (Q)->data = NULL;                                                     \
+        (Q)->head = 0;                                                        \
+        (Q)->size = 0;                                                        \
+        (Q)->cap  = 0;                                                        \
+    } while (0)
+
+#define QUEUE_FREE(Q) free((Q)->data);
+
+#define QUEUE_PUSH(Q, VAL)                                                    \
+    do {                                                                      \
+        if ((Q)->size == (Q)->cap) {                                          \
+            size_t _nc = (Q)->cap ? (Q)->cap * 2 : 4;                         \
+            void *_nd  = checked_malloc(_nc * sizeof(*(Q)->data));            \
+            if ((Q)->size > 0) {                                              \
+                size_t _f = MIN((Q)->size, (Q)->cap - (Q)->head);             \
+                memcpy(_nd, (Q)->data + (Q)->head, _f * sizeof(*(Q)->data));  \
+                if ((Q)->size > _f)                                           \
+                    memcpy((char *)_nd + _f * sizeof(*(Q)->data), (Q)->data,  \
+                           ((Q)->size - _f) * sizeof(*(Q)->data));            \
             }                                                                 \
-            free(q->data);                                                    \
-            q->data = new_data;                                               \
-            q->head = 0;                                                      \
-            q->cap  = new_cap;                                                \
+            free((Q)->data);                                                  \
+            (Q)->data = _nd;                                                  \
+            (Q)->head = 0;                                                    \
+            (Q)->cap  = _nc;                                                  \
         }                                                                     \
-        tail          = (q->head + q->size) % q->cap;                         \
-        q->data[tail] = *val;                                                 \
-        q->size++;                                                            \
-    }                                                                         \
-                                                                              \
-    void queue_##NAME##_pop(queue_##NAME##_t *q) {                            \
-        assert(q);                                                            \
-        assert(q->size > 0);                                                  \
-        q->head = (q->head + 1) % q->cap;                                     \
-        q->size--;                                                            \
-    }
+        (Q)->data[((Q)->head + (Q)->size) % (Q)->cap] = *(VAL);               \
+        (Q)->size++;                                                          \
+    } while (0)
+
+#define QUEUE_POP(Q)                                                          \
+    do {                                                                      \
+        (Q)->head = ((Q)->head + 1) % (Q)->cap;                               \
+        (Q)->size--;                                                          \
+    } while (0)
 
 #endif

@@ -8,11 +8,11 @@
 #ifndef CLIENT_CHUNK_RESULT_H
 #define CLIENT_CHUNK_RESULT_H
 
-#include "common/vec_s64.h"
+#include "common/coord.h"
 #include "client/chunk.h"
 
 typedef struct {
-    vec3_s64_t coord;
+    coord_t coord; /* Chunk coord, not world coord. */
     blocks_t blocks;
 } chunk_result_t;
 

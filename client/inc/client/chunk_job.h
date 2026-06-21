@@ -8,10 +8,10 @@
 #ifndef CLIENT_CHUNK_JOB_H
 #define CLIENT_CHUNK_JOB_H
 
-#include "common/vec_s64.h"
+#include "common/coord.h"
 
 typedef struct {
-    vec3_s64_t coord;
+    coord_t coord; /* Chunk coord, not world coord. */
 } chunk_job_t;
 
 #endif
