@@ -9,12 +9,16 @@
 
 #include <string.h>
 #include <math.h>
+#include <assert.h>
+
+#include "common/types.h"
+#include "common/vec_f32.h"
 
 #define PI   3.14159265358979323846
 #define PI_2 (PI / 2.0)
 
 void camera_new(camera_t *camera) {
-    camera->pos = (xvec3f32_t){{0.f, 0.f, 0.f}};
+    camera->pos = (vec3_f32_t){{0.f, 0.f, 0.f}};
 
     camera->pitch = 0.f;
     camera->yaw   = 0.f;
@@ -23,54 +27,73 @@ void camera_new(camera_t *camera) {
 }
 
 void camera_update_viewport(camera_t *camera, int width, int height) {
+    f32 fov;
+    f32 aspect_ratio;
+
     camera->viewport.width  = width;
     camera->viewport.height = height;
 
-    float fov          = 70.f * PI / 180.f;
-    float aspect_ratio = (float)width / (float)height;
+    fov          = 70.f * PI / 180.f;
+    aspect_ratio = (f32)width / (f32)height;
 
     xperspective_f32(aspect_ratio, fov, 0.1f, 1000.f,
                      camera->viewport.projection_matrix);
 }
-void camera_update(camera_t *camera, SDL_Window *window, float delta_time) {
-    const bool *keys = SDL_GetKeyboardState(NULL);
+void camera_update(camera_t *camera, SDL_Window *window, f32 delta_time) {
+    const bool *keys;
+    f32 speed;
+    f32 yaw_rad;
+    f32 pitch_rad;
+    vec3_f32_t forward;
+    vec3_f32_t right;
+    f32 look_speed;
+    vec3_f32_t center;
+    vec3_f32_t up = {{0.f, 1.f, 0.f}};
 
-    float speed = 20.f * delta_time;
+    assert(camera);
+    assert(window);
 
-    float yaw_rad   = camera->yaw * PI / 180.f;
-    float pitch_rad = camera->pitch * PI / 180.f;
+    keys = SDL_GetKeyboardState(NULL);
 
-    xvec3f32_t forward = {{cosf(pitch_rad) * sinf(yaw_rad), sinf(pitch_rad),
-                           cosf(pitch_rad) * cosf(yaw_rad)}};
+    speed = 20.f * delta_time;
 
-    xvec3f32_t right = {{sinf(yaw_rad - PI_2), 0.f, cosf(yaw_rad - PI_2)}};
+    yaw_rad   = camera->yaw * PI / 180.f;
+    pitch_rad = camera->pitch * PI / 180.f;
+
+    forward.pos.x = cosf(pitch_rad) * sinf(yaw_rad);
+    forward.pos.y = sinf(pitch_rad);
+    forward.pos.z = cosf(pitch_rad) * cosf(yaw_rad);
+
+    right.pos.x = sinf(yaw_rad - PI_2);
+    right.pos.y = 0.0f;
+    right.pos.z = cosf(yaw_rad - PI_2);
 
     if (keys[SDL_SCANCODE_W]) {
-        camera->pos.nth[0] += forward.nth[0] * speed;
-        camera->pos.nth[1] += forward.nth[1] * speed;
-        camera->pos.nth[2] += forward.nth[2] * speed;
+        camera->pos.pos.x += forward.pos.x * speed;
+        camera->pos.pos.y += forward.pos.y * speed;
+        camera->pos.pos.z += forward.pos.z * speed;
     }
     if (keys[SDL_SCANCODE_S]) {
-        camera->pos.nth[0] -= forward.nth[0] * speed;
-        camera->pos.nth[1] -= forward.nth[1] * speed;
-        camera->pos.nth[2] -= forward.nth[2] * speed;
+        camera->pos.pos.x -= forward.pos.x * speed;
+        camera->pos.pos.y -= forward.pos.y * speed;
+        camera->pos.pos.z -= forward.pos.z * speed;
     }
     if (keys[SDL_SCANCODE_A]) {
-        camera->pos.nth[0] -= right.nth[0] * speed;
-        camera->pos.nth[2] -= right.nth[2] * speed;
+        camera->pos.pos.x -= right.pos.x * speed;
+        camera->pos.pos.z -= right.pos.z * speed;
     }
     if (keys[SDL_SCANCODE_D]) {
-        camera->pos.nth[0] += right.nth[0] * speed;
-        camera->pos.nth[2] += right.nth[2] * speed;
+        camera->pos.pos.x += right.pos.x * speed;
+        camera->pos.pos.z += right.pos.z * speed;
     }
     if (keys[SDL_SCANCODE_SPACE]) {
-        camera->pos.nth[1] += speed;
+        camera->pos.pos.y += speed;
     }
     if (keys[SDL_SCANCODE_LSHIFT]) {
-        camera->pos.nth[1] -= speed;
+        camera->pos.pos.y -= speed;
     }
 
-    float look_speed = 95.f * delta_time;
+    look_speed = 95.f * delta_time;
 
     if (keys[SDL_SCANCODE_LEFT]) {
         camera->yaw += look_speed;
@@ -92,9 +115,6 @@ void camera_update(camera_t *camera, SDL_Window *window, float delta_time) {
         camera->pitch = -89.f;
     }
 
-    xvec3f32_t center;
-    xvec_add(camera->pos, forward, center);
-
-    xvec3f32_t up = {{0.f, 1.f, 0.f}};
+    vec3_f32_add(&center, &camera->pos, &forward);
     xlook_at_f32(camera->pos, center, up, camera->view_matrix);
 }

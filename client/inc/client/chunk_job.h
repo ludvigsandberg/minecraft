@@ -1,21 +1,17 @@
 /*****************************************************************************
- * File:        mat_f32.h
+ * File:        chunk_job.h
  * Author:      ludvigsandberg
  * Date:        2026-06-20
  * Description: -
  *****************************************************************************/
 
-#ifndef COMMON_MAT_F32_H
-#define COMMON_MAT_F32_H
+#ifndef CLIENT_CHUNK_JOB_H
+#define CLIENT_CHUNK_JOB_H
 
-#include "common/types.h"
+#include "common/vec_s64.h"
 
-typedef union mat3x3_f32_u {
-    f32 elems[9];
-} mat3x3_f32_t;
-
-typedef union mat4x4_f32_u {
-    f32 elems[16];
-} mat4x4_f32_t;
+typedef struct {
+    vec3_s64_t coord;
+} chunk_job_t;
 
 #endif

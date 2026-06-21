@@ -10,21 +10,25 @@
 
 #include <SDL3/SDL.h>
 
+#include "common/types.h"
+#include "common/vec_f32.h"
+#include "common/mat_f32.h"
+
 typedef struct {
-    xvec3f32_t pos;
-    float yaw;
-    float pitch;
-    xmat4f32_t view_matrix;
+    vec3_f32_t pos;
+    f32 yaw;
+    f32 pitch;
+    mat4x4_f32_t view_matrix;
 
     struct {
         int width;
         int height;
-        xmat4f32_t projection_matrix;
+        mat4x4_f32_t projection_matrix;
     } viewport;
 } camera_t;
 
 void camera_new(camera_t *camera);
 void camera_update_viewport(camera_t *camera, int width, int height);
-void camera_update(camera_t *camera, SDL_Window *window, float delta_time);
+void camera_update(camera_t *camera, SDL_Window *window, f32 delta_time);
 
 #endif

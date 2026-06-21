@@ -19,32 +19,39 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include "common/vec_s64.h"
 #include "client/chunk.h"
 #include "client/gl.h"
 
-void generate(blocks_t blocks, const xvec3i64_t *chunk_coord) {
-    for (int64_t x = 0; x < CHUNK_SIZE; x++) {
-        for (int64_t y = 0; y < CHUNK_SIZE; y++) {
-            for (int64_t z = 0; z < CHUNK_SIZE; z++) {
-                uint8_t *block = &blocks[z * (CHUNK_SIZE * CHUNK_SIZE) +
-                                         y * CHUNK_SIZE + x];
+void generate(blocks_t blocks, const vec3_s64_t *chunk_coord) {
+    s64 x;
+    s64 y;
+    s64 z;
 
-                xvec3i64_t world_coord = {
-                    {chunk_coord->nth[0] * CHUNK_SIZE + x,
-                     chunk_coord->nth[1] * CHUNK_SIZE + y,
-                     chunk_coord->nth[2] * CHUNK_SIZE + z}};
+    for (x = 0; x < CHUNK_SIZE; x++) {
+        for (y = 0; y < CHUNK_SIZE; y++) {
+            for (z = 0; z < CHUNK_SIZE; z++) {
+                u8 *block;
+                vec3_s64_t world_coord;
+                f32 noise_x;
+                f32 noise_y;
+                f32 noise_z;
+                f32 n;
 
-                float noise_x =
-                    (float)(chunk_coord->nth[0] * CHUNK_SIZE + x) / 25.0f;
-                float noise_y =
-                    (float)(chunk_coord->nth[1] * CHUNK_SIZE + y) / 25.0f;
-                float noise_z =
-                    (float)(chunk_coord->nth[2] * CHUNK_SIZE + z) / 25.0f;
+                block = &blocks[z * (CHUNK_SIZE * CHUNK_SIZE) +
+                                y * CHUNK_SIZE + x];
 
-                float n =
-                    stb_perlin_noise3(noise_x, noise_y, noise_z, 0, 0, 0);
+                world_coord.pos.x = chunk_coord->pos.x * CHUNK_SIZE + x;
+                world_coord.pos.y = chunk_coord->pos.y * CHUNK_SIZE + y;
+                world_coord.pos.z = chunk_coord->pos.z * CHUNK_SIZE + z;
 
-                if (world_coord.xyz.y < -10) {
+                noise_x = (f32)(chunk_coord->pos.x * CHUNK_SIZE + x) / 25.0f;
+                noise_y = (f32)(chunk_coord->pos.y * CHUNK_SIZE + y) / 25.0f;
+                noise_z = (f32)(chunk_coord->pos.z * CHUNK_SIZE + z) / 25.0f;
+
+                n = stb_perlin_noise3(noise_x, noise_y, noise_z, 0, 0, 0);
+
+                if (world_coord.pos.y < -10) {
                     if (n > 0.2f) {
                         *block = BLOCK_AIR;
                     } else {
@@ -62,18 +69,21 @@ void generate(blocks_t blocks, const xvec3i64_t *chunk_coord) {
     }
 }
 
-bool world_is_chunk_loaded(const world_t *world, const xvec3i64_t *chunk_coord,
+bool world_is_chunk_loaded(const world_t *world, const vec3_s64_t *chunk_coord,
                            chunk_t **chunk) {
-    for (size_t i = 0; i < 3; i++) {
-        if (chunk_coord->nth[i] <
-                world->center_chunk_coord.nth[i] - RENDER_DISTANCE ||
-            chunk_coord->nth[i] >
-                world->center_chunk_coord.nth[i] + RENDER_DISTANCE) {
+    size_t i;
+    chunk_t *chunk_maybe_loaded;
+
+    for (i = 0; i < 3; i++) {
+        if (chunk_coord->elems[i] <
+                world->center_chunk_coord.elems[i] - RENDER_DISTANCE ||
+            chunk_coord->elems[i] >
+                world->center_chunk_coord.elems[i] + RENDER_DISTANCE) {
             return false;
         }
     }
 
-    chunk_t *chunk_maybe_loaded = world->loaded_chunks[chunk_coord_to_index(
+    chunk_maybe_loaded = world->loaded_chunks[chunk_coord_to_index(
         chunk_coord, &world->center_chunk_coord)];
 
     if (!chunk_maybe_loaded) {
@@ -87,22 +97,25 @@ bool world_is_chunk_loaded(const world_t *world, const xvec3i64_t *chunk_coord,
     return true;
 }
 
-void world_to_local_chunk_coord(const xvec3i64_t *coord,
-                                const xvec3i64_t *center,
-                                xvec3i64_t *out_local) {
-    for (size_t i = 0; i < 3; i++) {
-        out_local->nth[i] = coord->nth[i] - center->nth[i] + RENDER_DISTANCE;
+void world_to_local_chunk_coord(const vec3_s64_t *coord,
+                                const vec3_s64_t *center,
+                                vec3_s64_t *out_local) {
+    size_t i;
+
+    for (i = 0; i < 3; i++) {
+        out_local->elems[i] =
+            coord->elems[i] - center->elems[i] + RENDER_DISTANCE;
     }
 }
 
-size_t local_chunk_coord_to_index(const xvec3i64_t *local) {
-    return local->nth[0] + LOADED_CHUNKS_LEN * local->nth[1] +
-           LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * local->nth[2];
+size_t local_chunk_coord_to_index(const vec3_s64_t *local) {
+    return local->pos.x + LOADED_CHUNKS_LEN * local->pos.y +
+           LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * local->pos.z;
 }
 
-size_t chunk_coord_to_index(const xvec3i64_t *coord,
-                            const xvec3i64_t *center) {
-    xvec3i64_t local;
+size_t chunk_coord_to_index(const vec3_s64_t *coord,
+                            const vec3_s64_t *center) {
+    vec3_s64_t local;
     world_to_local_chunk_coord(coord, center, &local);
 
     return local_chunk_coord_to_index(&local);
@@ -112,6 +125,10 @@ static int chunk_load_thread(void *ctx) {
     world_t *world = ctx;
 
     while (true) {
+        chunk_job_t *job = NULL;
+        chunk_result_t *res;
+        size_t job_queue_size;
+
         SDL_LockMutex(world->mutex);
 
         while (world->running && xalen(world->job_queue) == 0) {
@@ -123,16 +140,19 @@ static int chunk_load_thread(void *ctx) {
             break;
         }
 
-        chunk_job_t *job = NULL;
-        if (xalen(world->job_queue) > 0) {
-            job = world->job_queue[xalen(world->job_queue) - 1];
+        job_queue_size = arr_chunk_job_ptr_size(&world->job_queue);
+
+        if (job_queue_size > 0) {
+            // job = world->job_queue[job_queue_size - 1];
+            job = *arr_chunk_job_ptr_at(&world->job_queue, job_queue_size - 1);
+
             xalen(world->job_queue)--;
         }
 
         SDL_UnlockMutex(world->mutex);
 
-        chunk_result_t *res = malloc(sizeof(chunk_result_t));
-        res->coord          = job->coord;
+        res        = checked_malloc(sizeof(chunk_result_t));
+        res->coord = job->coord;
         generate(res->blocks, &res->coord);
 
         free(job);
@@ -145,7 +165,7 @@ static int chunk_load_thread(void *ctx) {
     return 0;
 }
 
-static void load_chunk(world_t *world, const xvec3i64_t *chunk_coord) {
+static void load_chunk(world_t *world, const vec3_s64_t *chunk_coord) {
     chunk_job_t *job = malloc(sizeof(chunk_job_t));
     job->coord       = *chunk_coord;
 
@@ -209,18 +229,18 @@ void world_new(world_t *world) {
     // load chunks
 
     for (size_t i = 0; i < 3; i++) {
-        world->center_chunk_coord.nth[i] = 0;
+        world->center_chunk_coord.elems[i] = 0;
     }
 
     memset(world->loaded_chunks, 0, LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
 
-    xvec3i64_t chunk_coord;
-    for (chunk_coord.nth[0] = -RENDER_DISTANCE;
-         chunk_coord.nth[0] <= RENDER_DISTANCE; chunk_coord.nth[0]++) {
-        for (chunk_coord.nth[1] = -RENDER_DISTANCE;
-             chunk_coord.nth[1] <= RENDER_DISTANCE; chunk_coord.nth[1]++) {
-            for (chunk_coord.nth[2] = -RENDER_DISTANCE;
-                 chunk_coord.nth[2] <= RENDER_DISTANCE; chunk_coord.nth[2]++) {
+    vec3_s64_t chunk_coord;
+    for (chunk_coord.pos.x = -RENDER_DISTANCE;
+         chunk_coord.pos.x <= RENDER_DISTANCE; chunk_coord.pos.x++) {
+        for (chunk_coord.pos.y = -RENDER_DISTANCE;
+             chunk_coord.pos.y <= RENDER_DISTANCE; chunk_coord.pos.y++) {
+            for (chunk_coord.pos.z = -RENDER_DISTANCE;
+                 chunk_coord.pos.z <= RENDER_DISTANCE; chunk_coord.pos.z++) {
                 load_chunk(world, &chunk_coord);
             }
         }
@@ -228,10 +248,9 @@ void world_new(world_t *world) {
 }
 
 void world_update(world_t *world, const camera_t *cam) {
-    xvec3i64_t camera_world_chunk_coord = {
-        {(int64_t)cam->pos.nth[0] / CHUNK_SIZE,
-         (int64_t)cam->pos.nth[1] / CHUNK_SIZE,
-         (int64_t)cam->pos.nth[2] / CHUNK_SIZE}};
+    vec3_s64_t camera_world_chunk_coord = {{(s64)cam->pos.pos.x / CHUNK_SIZE,
+                                            (s64)cam->pos.pos.y / CHUNK_SIZE,
+                                            (s64)cam->pos.pos.z / CHUNK_SIZE}};
 
     // poll threads for new chunks
 
@@ -272,8 +291,8 @@ void world_update(world_t *world, const camera_t *cam) {
     bool camera_moved_to_different_chunk = false;
 
     for (size_t i = 0; i < 3; i++) {
-        if (world->center_chunk_coord.nth[i] !=
-            camera_world_chunk_coord.nth[i]) {
+        if (world->center_chunk_coord.elems[i] !=
+            camera_world_chunk_coord.elems[i]) {
             camera_moved_to_different_chunk = true;
             break;
         }
@@ -281,14 +300,13 @@ void world_update(world_t *world, const camera_t *cam) {
 
     // move and generate chunks
     if (camera_moved_to_different_chunk) {
-        xvec3i64_t old_center_chunk_coord = world->center_chunk_coord;
+        vec3_s64_t old_center_chunk_coord = world->center_chunk_coord;
         world->center_chunk_coord         = camera_world_chunk_coord;
 
-        xvec3i64_t chunk_coord_diff = {
-            {world->center_chunk_coord.nth[0] - old_center_chunk_coord.nth[0],
-             world->center_chunk_coord.nth[1] - old_center_chunk_coord.nth[1],
-             world->center_chunk_coord.nth[2] -
-                 old_center_chunk_coord.nth[2]}};
+        vec3_s64_t chunk_coord_diff = {
+            {world->center_chunk_coord.pos.x - old_center_chunk_coord.pos.x,
+             world->center_chunk_coord.pos.y - old_center_chunk_coord.pos.y,
+             world->center_chunk_coord.pos.z - old_center_chunk_coord.pos.z}};
 
         chunk_t *old_loaded_chunks[LOADED_CHUNKS_TOTAL];
         memcpy(old_loaded_chunks, world->loaded_chunks,
@@ -298,24 +316,25 @@ void world_update(world_t *world, const camera_t *cam) {
         // from the previously loaded region or if a new one has to be
         // generated
 
-        for (int64_t x = 0; x < LOADED_CHUNKS_LEN; x++) {
-            for (int64_t y = 0; y < LOADED_CHUNKS_LEN; y++) {
-                for (int64_t z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                    xvec3i64_t local_chunk_coord     = {{x, y, z}};
-                    xvec3i64_t old_local_chunk_coord = {
-                        {x + chunk_coord_diff.nth[0],
-                         y + chunk_coord_diff.nth[1],
-                         z + chunk_coord_diff.nth[2]}};
+        for (s64 x = 0; x < LOADED_CHUNKS_LEN; x++) {
+            for (s64 y = 0; y < LOADED_CHUNKS_LEN; y++) {
+                for (s64 z = 0; z < LOADED_CHUNKS_LEN; z++) {
+                    vec3_s64_t local_chunk_coord     = {{x, y, z}};
+                    vec3_s64_t old_local_chunk_coord = {
+                        {x + chunk_coord_diff.pos.x,
+                         y + chunk_coord_diff.pos.y,
+                         z + chunk_coord_diff.pos.z}};
 
                     // check if chunk has moved out of new area
                     // free if so
 
                     bool delete = false;
                     for (size_t i = 0; i < 3; i++) {
-                        if (local_chunk_coord.nth[i] <
-                                chunk_coord_diff.nth[i] ||
-                            local_chunk_coord.nth[i] >=
-                                chunk_coord_diff.nth[i] + LOADED_CHUNKS_LEN) {
+                        if (local_chunk_coord.elems[i] <
+                                chunk_coord_diff.elems[i] ||
+                            local_chunk_coord.elems[i] >=
+                                chunk_coord_diff.elems[i] +
+                                    LOADED_CHUNKS_LEN) {
                             delete = true;
                             break;
                         }
@@ -328,7 +347,7 @@ void world_update(world_t *world, const camera_t *cam) {
                         if (old_loaded_chunks[idx]) {
                             // set chunk below to dirty
 
-                            xvec3i64_t below_chunk_coord =
+                            vec3_s64_t below_chunk_coord =
                                 old_loaded_chunks[idx]->coord;
                             below_chunk_coord.xyz.y--;
 
@@ -350,8 +369,8 @@ void world_update(world_t *world, const camera_t *cam) {
 
                     bool can_copy = true;
                     for (size_t i = 0; i < 3; i++) {
-                        if (old_local_chunk_coord.nth[i] < 0 ||
-                            old_local_chunk_coord.nth[i] >=
+                        if (old_local_chunk_coord.elems[i] < 0 ||
+                            old_local_chunk_coord.elems[i] >=
                                 LOADED_CHUNKS_LEN) {
                             can_copy = false;
                             break;
@@ -369,11 +388,11 @@ void world_update(world_t *world, const camera_t *cam) {
                     }
                     // generate new chunk
                     else {
-                        xvec3i64_t chunk_coord;
+                        vec3_s64_t chunk_coord;
                         for (size_t i = 0; i < 3; i++) {
-                            chunk_coord.nth[i] =
-                                local_chunk_coord.nth[i] +
-                                world->center_chunk_coord.nth[i] -
+                            chunk_coord.elems[i] =
+                                local_chunk_coord.elems[i] +
+                                world->center_chunk_coord.elems[i] -
                                 RENDER_DISTANCE;
                         }
 
@@ -411,10 +430,10 @@ void world_draw(world_t *world, camera_t *camera) {
             for (int z = 0; z < LOADED_CHUNKS_LEN; z++) {
                 // translate to world coordinates
 
-                xvec3i64_t world_chunk_coord = {
-                    {x + world->center_chunk_coord.nth[0] - RENDER_DISTANCE,
-                     y + world->center_chunk_coord.nth[1] - RENDER_DISTANCE,
-                     z + world->center_chunk_coord.nth[2] - RENDER_DISTANCE}};
+                vec3_s64_t world_chunk_coord = {
+                    {x + world->center_chunk_coord.pos.x - RENDER_DISTANCE,
+                     y + world->center_chunk_coord.pos.y - RENDER_DISTANCE,
+                     z + world->center_chunk_coord.pos.z - RENDER_DISTANCE}};
 
                 chunk_t *chunk = world->loaded_chunks[chunk_coord_to_index(
                     &world_chunk_coord, &world->center_chunk_coord)];
@@ -427,9 +446,9 @@ void world_draw(world_t *world, camera_t *camera) {
                 xmat4f32_t model;
                 xmat_identity_f32(model);
                 xvec3f32_t translation = {
-                    {(float)(world_chunk_coord.nth[0] * CHUNK_SIZE),
-                     (float)(world_chunk_coord.nth[1] * CHUNK_SIZE),
-                     (float)(world_chunk_coord.nth[2] * CHUNK_SIZE)}};
+                    {(float)(world_chunk_coord.pos.x * CHUNK_SIZE),
+                     (float)(world_chunk_coord.pos.y * CHUNK_SIZE),
+                     (float)(world_chunk_coord.pos.z * CHUNK_SIZE)}};
                 xmat4f32_t model2;
                 xmat4f32_translate(model, translation, model2);
 
@@ -456,28 +475,27 @@ static int floor_div(int a, int b) {
     return (a >= 0) ? (a / b) : ((a - b + 1) / b);
 }
 
-void world_set_block(world_t *world, const xvec3i64_t *world_coord,
+void world_set_block(world_t *world, const vec3_s64_t *world_coord,
                      uint8_t block) {
-    xvec3i64_t chunk_coord = {{floor_div(world_coord->nth[0], CHUNK_SIZE),
-                               floor_div(world_coord->nth[1], CHUNK_SIZE),
-                               floor_div(world_coord->nth[2], CHUNK_SIZE)}};
+    vec3_s64_t chunk_coord = {{floor_div(world_coord->pos.x, CHUNK_SIZE),
+                               floor_div(world_coord->pos.y, CHUNK_SIZE),
+                               floor_div(world_coord->pos.z, CHUNK_SIZE)}};
 
-    xvec3i64_t local = {
-        {world_coord->nth[0] - chunk_coord.nth[0] * CHUNK_SIZE,
-         world_coord->nth[1] - chunk_coord.nth[1] * CHUNK_SIZE,
-         world_coord->nth[2] - chunk_coord.nth[2] * CHUNK_SIZE}};
+    vec3_s64_t local = {{world_coord->pos.x - chunk_coord.pos.x * CHUNK_SIZE,
+                         world_coord->pos.y - chunk_coord.pos.y * CHUNK_SIZE,
+                         world_coord->pos.z - chunk_coord.pos.z * CHUNK_SIZE}};
 
-    xvec3i64_t local_chunk_coord = {
-        {chunk_coord.nth[0] -
-             (world->center_chunk_coord.nth[0] - RENDER_DISTANCE),
-         chunk_coord.nth[1] -
-             (world->center_chunk_coord.nth[1] - RENDER_DISTANCE),
-         chunk_coord.nth[2] -
-             (world->center_chunk_coord.nth[2] - RENDER_DISTANCE)}};
+    vec3_s64_t local_chunk_coord = {
+        {chunk_coord.pos.x -
+             (world->center_chunk_coord.pos.x - RENDER_DISTANCE),
+         chunk_coord.pos.y -
+             (world->center_chunk_coord.pos.y - RENDER_DISTANCE),
+         chunk_coord.pos.z -
+             (world->center_chunk_coord.pos.z - RENDER_DISTANCE)}};
 
     for (int i = 0; i < 3; i++) {
-        if (local_chunk_coord.nth[i] < 0 ||
-            local_chunk_coord.nth[i] >= LOADED_CHUNKS_LEN)
+        if (local_chunk_coord.elems[i] < 0 ||
+            local_chunk_coord.elems[i] >= LOADED_CHUNKS_LEN)
             return;
     }
 
@@ -487,8 +505,8 @@ void world_set_block(world_t *world, const xvec3i64_t *world_coord,
     if (!chunk)
         return;
 
-    size_t block_index = local.nth[2] * (CHUNK_SIZE * CHUNK_SIZE) +
-                         local.nth[1] * CHUNK_SIZE + local.nth[0];
+    size_t block_index = local.pos.z * (CHUNK_SIZE * CHUNK_SIZE) +
+                         local.pos.y * CHUNK_SIZE + local.pos.x;
 
     uint8_t old_block = chunk->blocks[block_index];
     if (old_block == block)
@@ -503,16 +521,16 @@ void world_set_block(world_t *world, const xvec3i64_t *world_coord,
     const int dz[6] = {0, 0, 0, 0, -1, 1};
 
     for (int i = 0; i < 6; i++) {
-        int nx = local.nth[0] + dx[i];
-        int ny = local.nth[1] + dy[i];
-        int nz = local.nth[2] + dz[i];
+        int nx = local.pos.x + dx[i];
+        int ny = local.pos.y + dy[i];
+        int nz = local.pos.z + dz[i];
 
         if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_SIZE ||
             nz < 0 || nz >= CHUNK_SIZE) {
-            xvec3i64_t neighbor_chunk_coord = {
-                {local_chunk_coord.nth[0] + dx[i],
-                 local_chunk_coord.nth[1] + dy[i],
-                 local_chunk_coord.nth[2] + dz[i]}};
+            vec3_s64_t neighbor_chunk_coord = {
+                {local_chunk_coord.pos.x + dx[i],
+                 local_chunk_coord.pos.y + dy[i],
+                 local_chunk_coord.pos.z + dz[i]}};
 
             for (int j = 0; j < 3; j++) {
                 if (neighbor_chunk_coord.nth[j] < 0 ||
