@@ -12,18 +12,18 @@
 #include "common/types.h"
 #include "client/world.h"
 
-static const vec3_s64_t dirs[6] = {
-    // front
+static const coord_t dirs[6] = {
+    /* Front. */
     {{0, 0, 1}},
-    // back
+    /* Back. */
     {{0, 0, -1}},
-    // left
+    /* Left. */
     {{-1, 0, 0}},
-    // right
+    /* Right. */
     {{1, 0, 0}},
-    // top
+    /* Top. */
     {{0, 1, 0}},
-    // bottom
+    /* Bottom. */
     {{0, -1, 0}},
 };
 
@@ -45,12 +45,12 @@ static int floor_mod(s64 a, s64 b) {
 }
 
 typedef struct {
-    vec3_s64_t block_pos;
-    uint8_t light;
+    coord_t block_pos;
+    u8 light;
 } floodfill_block_info_t;
 
 /*static void propagate_light_from_neighbor(chunk_t *chunk, const world_t
-*world, const vec3_s64_t *dir, floodfill_queue_t *floodfill_queue) { vec3_s64_t
+*world, const coord_t *dir, floodfill_queue_t *floodfill_queue) { coord_t
 neighbor_chunk_coord; xvec_add(chunk->coord, *dir, neighbor_chunk_coord);
 
     chunk_t *neighbor_chunk;
@@ -60,10 +60,10 @@ neighbor_chunk_coord; xvec_add(chunk->coord, *dir, neighbor_chunk_coord);
         if (dir->pos.y == 1) {
             for (s64 x = 0; x < CHUNK_SIZE; ++x) {
                 for (s64 z = 0; z < CHUNK_SIZE; ++z) {
-                    vec3_s64_t block_pos = {{x, CHUNK_SIZE - 1, z}};
+                    coord_t block_pos = {{x, CHUNK_SIZE - 1, z}};
 
-                    size_t block_idx = idx3d(block_pos.pos.x, block_pos.pos.y,
-                                             block_pos.pos.z, CHUNK_SIZE);
+                    size_t block_idx = INDEX_3D(block_pos.pos.x,
+block_pos.pos.y, block_pos.pos.z, CHUNK_SIZE);
 
                     if (chunk->blocks[block_idx] != BLOCK_AIR) {
                         continue;
@@ -89,7 +89,7 @@ neighbor_chunk_coord; xvec_add(chunk->coord, *dir, neighbor_chunk_coord);
 
     for (s64 i = 0; i < CHUNK_SIZE; ++i) {
         for (s64 j = 0; j < CHUNK_SIZE; ++j) {
-            vec3_s64_t local_block_pos;
+            coord_t local_block_pos;
 
             if (dir->pos.y == 1) {
                 local_block_pos.pos.x = i;
@@ -117,7 +117,7 @@ neighbor_chunk_coord; xvec_add(chunk->coord, *dir, neighbor_chunk_coord);
                 local_block_pos.pos.z = j;
             }
 
-            vec3_s64_t neighbor_block_pos = local_block_pos;
+            coord_t neighbor_block_pos = local_block_pos;
 
             if (dir->pos.y == 1) {
                 neighbor_block_pos.pos.y = 0;
@@ -134,20 +134,20 @@ neighbor_chunk_coord; xvec_add(chunk->coord, *dir, neighbor_chunk_coord);
             }
 
             size_t neighbor_idx =
-                idx3d(neighbor_block_pos.pos.x, neighbor_block_pos.pos.y,
+                INDEX_3D(neighbor_block_pos.pos.x, neighbor_block_pos.pos.y,
                       neighbor_block_pos.pos.z, CHUNK_SIZE);
 
             if (neighbor_chunk->blocks[neighbor_idx] != BLOCK_AIR) {
                 continue;
             }
 
-            uint8_t light = neighbor_chunk->light[neighbor_idx];
+            u8 light = neighbor_chunk->light[neighbor_idx];
 
             if (light < 2) {
                 continue;
             }
 
-            uint8_t new_light = light - 1;
+            u8 new_light = light - 1;
 
             // check for skylight
             if (dir->pos.y == 1) {
@@ -156,7 +156,7 @@ neighbor_chunk_coord; xvec_add(chunk->coord, *dir, neighbor_chunk_coord);
                 }
             }
 
-            chunk->light[idx3d(local_block_pos.pos.x, local_block_pos.pos.y,
+            chunk->light[INDEX_3D(local_block_pos.pos.x, local_block_pos.pos.y,
                                local_block_pos.pos.z, CHUNK_SIZE)] = new_light;
 
             // push light source onto floodfill queue
@@ -169,7 +169,7 @@ neighbor_chunk_coord; xvec_add(chunk->coord, *dir, neighbor_chunk_coord);
 }*/
 
 void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
-    /*memset(chunk->light, 0, CHUNK_TOTAL * sizeof(uint8_t));
+    /*memset(chunk->light, 0, CHUNK_TOTAL * sizeof(u8));
 
     floodfill_queue_t floodfill_queue;
     xqueue_new(floodfill_queue, 4096 * 4);
@@ -189,7 +189,7 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
         }
 
         size_t block_idx =
-            idx3d(current.block_pos.pos.x, current.block_pos.pos.y,
+            INDEX_3D(current.block_pos.pos.x, current.block_pos.pos.y,
                   current.block_pos.pos.z, CHUNK_SIZE);
 
         for (size_t i = 0; i < 6; ++i) {
@@ -203,7 +203,7 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
 
             if (!inside) {
                 if (current.light >= 2) {
-                    vec3_s64_t neighbor_chunk_coord;
+                    coord_t neighbor_chunk_coord;
                     xvec_add(chunk->coord, dirs[i], neighbor_chunk_coord);
 
                     chunk_t *neighbor_chunk;
@@ -216,14 +216,14 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
                 continue;
             }
 
-            size_t neighbor_block_idx = idx3d(nx, ny, nz, CHUNK_SIZE);
+            size_t neighbor_block_idx = INDEX_3D(nx, ny, nz, CHUNK_SIZE);
 
             if (chunk->blocks[neighbor_block_idx] != BLOCK_AIR) {
                 continue;
             }
 
-            uint8_t neighbor_light     = chunk->light[neighbor_block_idx];
-            uint8_t new_neighbor_light = current.light - 1;
+            u8 neighbor_light     = chunk->light[neighbor_block_idx];
+            u8 new_neighbor_light = current.light - 1;
 
             // propagate skylight downwards
             if (dirs[i].pos.y == -1 && current.light == 15) {
@@ -237,7 +237,7 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
             chunk->light[neighbor_block_idx] = new_neighbor_light;
 
             floodfill_block_info_t neighbor;
-            neighbor.block_pos = (vec3_s64_t){{nx, ny, nz}};
+            neighbor.block_pos = (coord_t){{nx, ny, nz}};
             neighbor.light     = new_neighbor_light;
             xqueue_push(floodfill_queue, neighbor);
         }
@@ -246,7 +246,7 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
     xqueue_free(floodfill_queue);
 
     // set chunk below to dirty
-    vec3_s64_t below_chunk_coord = chunk->coord;
+    coord_t below_chunk_coord = chunk->coord;
     below_chunk_coord.pos.y--;
 
     chunk_t *below_chunk;
@@ -256,7 +256,7 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
 
     // recalculate light for all dirty neighbors
     for (int i = 0; i < 6; ++i) {
-        vec3_s64_t neighbor_chunk_coord;
+        coord_t neighbor_chunk_coord;
         xvec_add(chunk->coord, dirs[i], neighbor_chunk_coord);
 
         chunk_t *neighbor_chunk;
@@ -269,32 +269,31 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
     }*/
 }
 
-uint8_t chunk_get_skylight(const chunk_t *chunk, const vec3_s64_t *block_pos) {
-    return (chunk->light[idx3d(block_pos->pos.x, block_pos->pos.y,
-                               block_pos->pos.z, CHUNK_SIZE)] >>
+u8 chunk_get_skylight(const chunk_t *chunk, const coord_t *block_pos) {
+    return (chunk->light[INDEX_3D(block_pos->pos.x, block_pos->pos.y,
+                                  block_pos->pos.z, CHUNK_SIZE)] >>
             4) &
            0xf;
 }
 
-void chunk_set_skylight(chunk_t *chunk, const vec3_s64_t *block_pos,
-                        uint8_t intensity) {
-    size_t i = idx3d(block_pos->pos.x, block_pos->pos.y, block_pos->pos.z,
-                     CHUNK_SIZE);
+void chunk_set_skylight(chunk_t *chunk, const coord_t *block_pos,
+                        u8 intensity) {
+    size_t i = INDEX_3D(block_pos->pos.x, block_pos->pos.y, block_pos->pos.z,
+                        CHUNK_SIZE);
 
     chunk->light[i] = (chunk->light[i] & 0xf) | (intensity << 4);
 }
 
-uint8_t chunk_get_block_light(const chunk_t *chunk,
-                              const vec3_s64_t *block_pos) {
-    return chunk->light[idx3d(block_pos->pos.x, block_pos->pos.y,
-                              block_pos->pos.z, CHUNK_SIZE)] &
+u8 chunk_get_block_light(const chunk_t *chunk, const coord_t *block_pos) {
+    return chunk->light[INDEX_3D(block_pos->pos.x, block_pos->pos.y,
+                                 block_pos->pos.z, CHUNK_SIZE)] &
            0xf;
 }
 
-void chunk_set_block_light(chunk_t *chunk, const vec3_s64_t *block_pos,
-                           uint8_t intensity) {
-    size_t i = idx3d(block_pos->pos.x, block_pos->pos.y, block_pos->pos.z,
-                     CHUNK_SIZE);
+void chunk_set_block_light(chunk_t *chunk, const coord_t *block_pos,
+                           u8 intensity) {
+    size_t i = INDEX_3D(block_pos->pos.x, block_pos->pos.y, block_pos->pos.z,
+                        CHUNK_SIZE);
 
     chunk->light[i] = (chunk->light[i] & 0xf0) | intensity;
 }

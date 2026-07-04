@@ -22,6 +22,14 @@
 #include "client/gui.h"
 
 int main(int argc, char **argv) {
+    camera_t camera;
+    SDL_Window *window;
+    SDL_GLContext context;
+    world_t world;
+    sky_t sky;
+    gui_t gui;
+    f32 prev_timestamp;
+
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         exit(EXIT_FAILURE);
     }
@@ -34,18 +42,17 @@ int main(int argc, char **argv) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
 
-    camera_t camera;
     camera_new(&camera);
 
-    SDL_Window *window = SDL_CreateWindow(
-        "minecraft", camera.viewport.width, camera.viewport.height,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("minecraft", camera.viewport.width,
+                              camera.viewport.height,
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
     if (!window) {
         exit(EXIT_FAILURE);
     }
 
-    SDL_GLContext context = SDL_GL_CreateContext(window);
+    context = SDL_GL_CreateContext(window);
 
     if (!context) {
         exit(EXIT_FAILURE);
@@ -65,24 +72,28 @@ int main(int argc, char **argv) {
 
 #ifndef NDEBUG
     glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(opengl_debug_cb, NULL);
+    glDebugMessageCallback(opengl_debug_callback, NULL);
 #endif
 
-    world_t world;
     world_new(&world);
-
-    sky_t sky;
     sky_new(&sky);
-
-    gui_t gui;
     gui_new(&gui);
 
-    float prev_timepoint = (float)SDL_GetTicks() / 1000.f;
+    prev_timestamp = (f32)SDL_GetTicks() / 1000.f;
 
     while (true) {
-        // update
-
         SDL_Event event;
+        f32 timestamp;
+        f32 delta_time;
+        coord_t center;
+        f32 radius = 5;
+        s64 x;
+        s64 y;
+        s64 z;
+        int vertical = 16;
+
+        /* Update. */
+
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_EVENT_QUIT: {
@@ -98,41 +109,39 @@ int main(int argc, char **argv) {
             }
         }
 
-        float timepoint  = (float)SDL_GetTicks() / 1000.f;
-        float delta_time = timepoint - prev_timepoint;
-        prev_timepoint   = timepoint;
+        timestamp      = (f32)SDL_GetTicks() / 1000.f;
+        delta_time     = timestamp - prev_timestamp;
+        prev_timestamp = timestamp;
 
         camera_update(&camera, window, delta_time);
 
-        // carve out blocks around camera
+        /* Carve out blocks around camera. */
 
-        xvec3i64_t center = {{(int64_t)camera.pos.nth[0],
-                              (int64_t)camera.pos.nth[1],
-                              (int64_t)camera.pos.nth[2]}};
+#ifdef 0
+        center = {{(s64)camera.pos.x, (s64)camera.pos.y, (s64)camera.pos.z}};
 
-        float radius = 5;
+        for (x = center.x - radius; x <= center.x + radius; x++) {
+            for (y = center.y - radius; y <= center.y + radius; y++) {
+                for (z = center.z - radius; z <= center.z + radius; z++) {
+                    coord_t diff;
+                    f32 len;
 
-        for (int64_t x = center.nth[0] - radius; x <= center.nth[0] + radius;
-             x++) {
-            for (int64_t y = center.nth[1] - radius;
-                 y <= center.nth[1] + radius; y++) {
-                for (int64_t z = center.nth[2] - radius;
-                     z <= center.nth[2] + radius; z++) {
-                    xvec3i64_t diff = {{x - center.nth[0], y - center.nth[1],
-                                        z - center.nth[2]}};
+                    diff.x = x - center.x;
+                    diff.y = y - center.y;
+                    diff.z = z - center.z;
 
-                    float len = sqrtf((float)(diff.nth[0] * diff.nth[0] +
-                                              diff.nth[1] * diff.nth[1] +
-                                              diff.nth[2] * diff.nth[2]));
+                    len = sqrtf((f32)(diff.x * diff.x + diff.y * diff.y +
+                                      diff.z * diff.z));
 
                     if (len <= radius) {
-                        xvec3i64_t current = {{x, y, z}};
+                        coord_t current = {{x, y, z}};
 
                         world_set_block(&world, &current, BLOCK_AIR);
                     }
                 }
             }
         }
+#endif
 
         world_update(&world, &camera);
 
@@ -144,14 +153,12 @@ int main(int argc, char **argv) {
 
         world_draw(&world, &camera);
 
-        int vertical = 16;
-
         gui_text(&gui, 10, 10, "minecraft");
         gui_text(&gui, 10, 10 + vertical, "frame %.1fms", delta_time * 1000.f);
 
-        gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", camera.pos.nth[0]);
-        gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", camera.pos.nth[1]);
-        gui_text(&gui, 10, 10 + 5 * vertical, "z %.2f", camera.pos.nth[2]);
+        gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", VEC_X(camera.pos));
+        gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", VEC_Y(camera.pos));
+        gui_text(&gui, 10, 10 + 5 * vertical, "z %.2f", VEC_Z(camera.pos));
 
         gui_text(&gui, 10, 10 + 7 * vertical, "yaw %.2f", camera.yaw);
         gui_text(&gui, 10, 10 + 8 * vertical, "pitch %.2f", camera.pitch);

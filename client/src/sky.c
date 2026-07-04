@@ -7,8 +7,8 @@
 
 #include "client/sky.h"
 
-static const float vertices[] = {-1.f, 1.f, -1.f, -1.f, 1.f, -1.f,
-                                 -1.f, 1.f, 1.f,  -1.f, 1.f, 1.f};
+static const float vertices[] = {-1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
+                                 -1.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 1.0f};
 
 void sky_new(sky_t *sky) {
     sky->shader_program =
@@ -30,14 +30,15 @@ void sky_new(sky_t *sky) {
 }
 
 void sky_draw(sky_t *sky, camera_t *camera) {
+    mat4x4_t inv_view_matrix;
+
     glDepthMask(GL_FALSE);
 
     glUseProgram(sky->shader_program);
 
-    xmat4f32_t inv_view_matrix;
     xmat4_invert_view_f32(camera->view_matrix, inv_view_matrix);
     glUniformMatrix4fv(sky->uniform_loc.inv_view_matrix, 1, GL_FALSE,
-                       (const GLfloat *)inv_view_matrix.nth);
+                       (const GLfloat *)inv_view_matrix.elems);
 
     glBindVertexArray(sky->vertex_array);
     glDrawArrays(GL_TRIANGLES, 0, 6);

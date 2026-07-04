@@ -8,16 +8,16 @@
 #ifndef CLIENT_GUI_H
 #define CLIENT_GUI_H
 
-#include <stdint.h>
-
 #include <glad/glad.h>
+
+#include "client/arr_glyph.h"
 
 #define MAX_GLYPHS   4096
 #define GLYPH_PIXELS 12
 
 typedef struct {
     struct {
-        xarr(glyph_t) glyphs;
+        arr_glyph_t glyphs;
 
         GLuint texture;
         GLuint texture_uniform_loc;

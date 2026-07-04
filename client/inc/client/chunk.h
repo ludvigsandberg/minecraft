@@ -29,7 +29,7 @@ struct world_t; /* Forward declare. */
 typedef u8 blocks_t[CHUNK_TOTAL];
 
 typedef struct {
-    vec3_s64_t coord; /* Chunk coord (not block coord). */
+    coord_t coord; /* Chunk coord, not world coord. */
 
     blocks_t blocks;
 
@@ -44,19 +44,18 @@ typedef struct {
     size_t num_indices;
 } chunk_t;
 
-void chunk_new(chunk_t *chunk, blocks_t blocks, const vec3_s64_t *chunk_coord,
+void chunk_new(chunk_t *chunk, blocks_t blocks, const coord_t *chunk_coord,
                struct world_t *world);
 void chunk_free(chunk_t *chunk);
 void chunk_update(chunk_t *chunk, const struct world_t *world);
 
 void chunk_calculate_light(chunk_t *chunk, const struct world_t *world);
 
-uint8_t chunk_get_skylight(const chunk_t *chunk, const vec3_s64_t *block_pos);
-void chunk_set_skylight(chunk_t *chunk, const vec3_s64_t *block_pos,
+uint8_t chunk_get_skylight(const chunk_t *chunk, const coord_t *block_pos);
+void chunk_set_skylight(chunk_t *chunk, const coord_t *block_pos,
                         uint8_t intensity);
-uint8_t chunk_get_block_light(const chunk_t *chunk,
-                              const vec3_s64_t *block_pos);
-void chunk_set_block_light(chunk_t *chunk, const vec3_s64_t *block_pos,
+uint8_t chunk_get_block_light(const chunk_t *chunk, const coord_t *block_pos);
+void chunk_set_block_light(chunk_t *chunk, const coord_t *block_pos,
                            uint8_t intensity);
 
 #endif

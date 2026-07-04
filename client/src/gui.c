@@ -13,42 +13,47 @@
 
 #include <stb_image.h>
 
+#include "client/arr_f32.h"
+#include "client/arr_u32.h"
 #include "client/gl.h"
 
-static const float glyph_vertices[8] = {0.f, 0.f, 1.f, 0.f,
-                                        1.f, 1.f, 0.f, 1.f};
+static const f32 glyph_vertices[8] = {0.0f, 0.0f, 1.0f, 0.0f,
+                                      1.0f, 1.0f, 0.0f, 1.0f};
 
-static const float glyph_uvs[8] = {0.f,    0.f,    .0625f, 0.f,
-                                   .0625f, .0625f, 0.f,    .0625f};
+static const f32 glyph_uvs[8] = {0.0f,    0.0f,    0.0625f, 0.0f,
+                                 0.0625f, 0.0625f, 0.0f,    0.0625f};
 
-static const uint32_t glyph_indices[6] = {0, 1, 2, 2, 3, 0};
+static const u32 glyph_indices[6] = {0, 1, 2, 2, 3, 0};
 
 static const int glyph_widths[256] = {
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 2, 6, 2, 8, //
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, 8, // 0-9
-    7, 6, 6, 6, 6, 6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, // @, A-O
-    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, // P-Z
-    3, 6, 6, 6, 6, 6, 5, 6, 6, 2, 6, 5, 3, 6, 6, 6, // ', a-o
-    6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, // p-z
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
-    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, //
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 2, 6, 2, 8, /*                       */
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, 8, /* 0-9                   */
+    7, 6, 6, 6, 6, 6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, /* @, A-O                */
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, /* P-Z                   */
+    3, 6, 6, 6, 6, 6, 5, 6, 6, 2, 6, 5, 3, 6, 6, 6, /* ', a-o                */
+    6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, /* p-z                   */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
 };
 
 void gui_new(gui_t *gui) {
-    xarr_new(gui->charset.glyphs);
+    u8 *data;
+    int x = 0;
+    int y = 0;
 
-    // load charset
+    arr_glyph_new(&gui->charset.glyphs);
 
-    uint8_t *data =
-        stbi_load("res/charset.png", &(int){0}, &(int){0}, NULL, 4);
+    /* Load charset. */
+
+    data = stbi_load("res/charset.png", &x, &y, NULL, 4);
 
     if (!data) {
         printf("Failed to load res/charset.png: %s\n", stbi_failure_reason());
@@ -63,7 +68,7 @@ void gui_new(gui_t *gui) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    // load shaders
+    /* Load shaders. */
 
     gui->charset.shader_program =
         shader_program_new("res/charset_vs.glsl", "res/charset_fs.glsl");
@@ -71,46 +76,49 @@ void gui_new(gui_t *gui) {
     gui->charset.texture_uniform_loc =
         glGetUniformLocation(gui->charset.shader_program, "charset");
 
-    // create buffers
+    /* Create buffers. */
 
     glGenVertexArrays(1, &gui->charset.vertex_array);
     glBindVertexArray(gui->charset.vertex_array);
 
     glGenBuffers(1, &gui->charset.vertex_buffer);
     glBindBuffer(GL_ARRAY_BUFFER, gui->charset.vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, MAX_GLYPHS * 4 * 4 * sizeof(float), NULL,
-                 GL_DYNAMIC_DRAW); // pre allocate
+    glBufferData(GL_ARRAY_BUFFER, MAX_GLYPHS * 4 * 4 * sizeof(f32), NULL,
+                 GL_DYNAMIC_DRAW); /* Pre allocate. */
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(f32),
                           (void *)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                          (void *)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(f32),
+                          (void *)(2 * sizeof(f32)));
     glEnableVertexAttribArray(1);
 
     glGenBuffers(1, &gui->charset.element_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gui->charset.element_buffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_GLYPHS * 6 * sizeof(uint32_t),
-                 NULL,
-                 GL_DYNAMIC_DRAW); // pre allocate
+                 NULL, GL_DYNAMIC_DRAW); /* Pre allocate. */
 }
 
 void gui_text(gui_t *gui, int x, int y, const char *fmt, ...) {
-    // format
-
     va_list args;
+    char buf[512];
+    int len;
+    int cursor;
+    int i;
+
+    /* Format. */
+
     va_start(args, fmt);
 
-    char buf[512];
-    int len = vsnprintf(buf, sizeof buf, fmt, args);
+    len = vsnprintf(buf, sizeof buf, fmt, args);
 
     va_end(args);
 
-    // store
+    /* Store. */
 
-    int cursor = x;
+    cursor = x;
 
-    for (int i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         char c = buf[i];
 
         glyph_t glyph;
@@ -121,83 +129,83 @@ void gui_text(gui_t *gui, int x, int y, const char *fmt, ...) {
         glyph.screen.y     = y;
         glyph.screen.w     = GLYPH_PIXELS * glyph.charset.w / 8;
         glyph.screen.h     = GLYPH_PIXELS;
-        glyph.color.nth[0] = 1.f;
-        glyph.color.nth[1] = 1.f;
-        glyph.color.nth[2] = 1.f;
+        VEC_R(glyph.color) = 1.0f;
+        VEC_G(glyph.color) = 1.0f;
+        VEC_B(glyph.color) = 1.0f;
 
-        xarr_append(gui->charset.glyphs, glyph);
+        arr_glyph_append(&gui->charset.glyphs, glyph);
 
         cursor += glyph.screen.w;
     }
 }
 
 void gui_draw(gui_t *gui, int window_width, int window_height) {
-    if (xalen(gui->charset.glyphs) == 0) {
+    arr_f32_t mesh_vertices;
+    arr_u32_t mesh_indices;
+    size_t glyph_idx;
+    int i;
+
+    if (gui->charset.glyphs.size == 0) {
         return;
     }
 
-    // batch glyphs
+    /* Batch glyphs. */
 
-    xarr(float) mesh_vertices;
-    xarr_new_reserve(mesh_vertices, 1024);
+    arr_f32_new_reserve(&mesh_vertices, 1024);
+    arr_u32_new_reserve(&mesh_indices, 1024);
 
-    xarr(uint32_t) mesh_indices;
-    xarr_new_reserve(mesh_indices, 1024);
+    for (glyph_idx = 0; glyph_idx < gui->charset.glyphs.size; glyph_idx++) {
+        glyph_t glyph = ARR_AT(gui->charset.glyphs, glyph_idx);
 
-    for (size_t glyph_idx = 0; glyph_idx < xalen(gui->charset.glyphs);
-         ++glyph_idx) {
-        glyph_t glyph = gui->charset.glyphs[glyph_idx];
+        /* Append indices. */
 
-        // append indices
+        size_t num_vertices = mesh_vertices.size / 4;
 
-        size_t num_vertices = xalen(mesh_vertices) / 4;
+        for (i = 0; i < 6; i++) {
+            u32 index = num_vertices + glyph_indices[i];
 
-        for (int i = 0; i < 6; i++) {
-            uint32_t index = num_vertices + glyph_indices[i];
-
-            xarr_append(mesh_indices, index);
+            arr_u32_append(&mesh_indices, index);
         }
 
-        // append vertices
+        /* Append vertices. */
 
-        float x0 = (glyph.screen.x * 2.0f / window_width) - 1.0f;
-        float x1 =
+        f32 x0 = (glyph.screen.x * 2.0f / window_width) - 1.0f;
+        f32 x1 =
             ((glyph.screen.x + glyph.screen.w) * 2.0f / window_width) - 1.0f;
 
-        float y_top    = window_height - glyph.screen.y;
-        float y_bottom = y_top - glyph.screen.h;
-        float y0       = (y_top * 2.0f / window_height) - 1.0f;
-        float y1       = (y_bottom * 2.0f / window_height) - 1.0f;
+        f32 y_top    = window_height - glyph.screen.y;
+        f32 y_bottom = y_top - glyph.screen.h;
+        f32 y0       = (y_top * 2.0f / window_height) - 1.0f;
+        f32 y1       = (y_bottom * 2.0f / window_height) - 1.0f;
 
-        float u0 = (glyph.charset.x * 8 + 0) / 128.0f;
-        float u1 = (glyph.charset.x * 8 + glyph.charset.w) / 128.0f;
-        float v0 = (glyph.charset.y * 8 + 0) / 128.0f;
-        float v1 = (glyph.charset.y * 8 + 8) / 128.0f;
+        f32 u0 = (glyph.charset.x * 8 + 0) / 128.0f;
+        f32 u1 = (glyph.charset.x * 8 + glyph.charset.w) / 128.0f;
+        f32 v0 = (glyph.charset.y * 8 + 0) / 128.0f;
+        f32 v1 = (glyph.charset.y * 8 + 8) / 128.0f;
 
-        float vertex_data[16] = {x0, y1, u0, v1, x1, y1, u1, v1,
-                                 x1, y0, u1, v0, x0, y0, u0, v0};
+        f32 vertex_data[16] = {x0, y1, u0, v1, x1, y1, u1, v1,
+                               x1, y0, u1, v0, x0, y0, u0, v0};
 
-        xarr_append_n(mesh_vertices, 16, vertex_data);
+        arr_f32_append_n(&mesh_vertices, 16, vertex_data);
     }
 
-    // upload mesh to gpu
+    /* Upload mesh to GPU. */
 
     glBindVertexArray(gui->charset.vertex_array);
 
     glBindBuffer(GL_ARRAY_BUFFER, gui->charset.vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, xalen(mesh_vertices) * sizeof(float), NULL,
-                 GL_DYNAMIC_DRAW); // buffer orphaning
-    glBufferSubData(GL_ARRAY_BUFFER, 0, xalen(mesh_vertices) * sizeof(float),
-                    mesh_vertices);
+    glBufferData(GL_ARRAY_BUFFER, mesh_vertices.size * sizeof(f32), NULL,
+                 GL_DYNAMIC_DRAW); /* Buffer orphaning. */
+    glBufferSubData(GL_ARRAY_BUFFER, 0, mesh_vertices.size * sizeof(f32),
+                    mesh_vertices.data);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gui->charset.element_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 xalen(mesh_indices) * sizeof(uint32_t), NULL,
-                 GL_DYNAMIC_DRAW); // buffer orphaning
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh_indices.size * sizeof(uint32_t),
+                 NULL, GL_DYNAMIC_DRAW); /* Buffer orphaning. */
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
-                    xalen(mesh_indices) * sizeof(uint32_t), mesh_indices);
+                    mesh_indices.size * sizeof(uint32_t), mesh_indices.data);
 
-    // draw
+    /* Draw. */
 
     glUseProgram(gui->charset.shader_program);
 
@@ -207,13 +215,13 @@ void gui_draw(gui_t *gui, int window_width, int window_height) {
 
     glBindVertexArray(gui->charset.vertex_array);
 
-    glDrawElements(GL_TRIANGLES, xalen(mesh_indices), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, mesh_indices.size, GL_UNSIGNED_INT, 0);
 
-    // cleanup
+    /* Cleanup. */
 
-    xarr_free(mesh_vertices);
-    xarr_free(mesh_indices);
+    arr_f32_free(&mesh_vertices);
+    arr_u32_free(&mesh_indices);
 
-    // reset
-    xalen(gui->charset.glyphs) = 0;
+    /* Reset. */
+    gui->charset.glyphs.size = 0;
 }

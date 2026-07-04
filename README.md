@@ -32,4 +32,8 @@ cmake --build build --config Release # or Debug
 
 ## Run
 
-Locate the client in `build/` and run it
+Locate the client in `build/` and run it.
+
+## Contribute
+
+Follow the same code style. Install clang-format.

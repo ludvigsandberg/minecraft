@@ -10,56 +10,28 @@
 
 #include "common/types.h"
 
-typedef union vec2_u {
-    struct {
-        f32 x;
-        f32 y;
-    } pos;
-    struct {
-        f32 u;
-        f32 v;
-    } uv;
+#define VEC_X(V) (V).elems[0]
+#define VEC_Y(V) (V).elems[1]
+#define VEC_Z(V) (V).elems[2]
+#define VEC_W(V) (V).elems[3]
+#define VEC_R(V) (V).elems[0]
+#define VEC_G(V) (V).elems[1]
+#define VEC_B(V) (V).elems[2]
+#define VEC_A(V) (V).elems[3]
+#define VEC_U(V) (V).elems[0]
+#define VEC_V(V) (V).elems[1]
+#define VEC_S(V) (V).elems[2]
+#define VEC_T(V) (V).elems[3]
+
+typedef struct vec2_u {
     f32 elems[2];
 } vec2_t;
 
-typedef union vec3_u {
-    struct {
-        f32 x;
-        f32 y;
-        f32 z;
-    } pos;
-    struct {
-        f32 r;
-        f32 g;
-        f32 b;
-    } color;
-    struct {
-        f32 u;
-        f32 v;
-        f32 w;
-    } uv;
+typedef struct vec3_u {
     f32 elems[3];
 } vec3_t;
 
-typedef union vec4_u {
-    struct {
-        f32 x;
-        f32 y;
-        f32 z;
-        f32 w;
-    } pos;
-    struct {
-        f32 r;
-        f32 g;
-        f32 b;
-        f32 a;
-    } color;
-    struct {
-        f32 u;
-        f32 v;
-        f32 w;
-        f32 q;
-    } uv;
+typedef struct vec4_u {
     f32 elems[4];
 } vec4_t;
 

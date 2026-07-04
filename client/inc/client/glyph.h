@@ -8,11 +8,13 @@
 #ifndef CLIENT_GLYPH_H
 #define CLIENT_GLYPH_H
 
+#include "common/vec.h"
+
 typedef struct {
     struct {
         int x;
         int y;
-        int w; // glyph width 1-8px
+        int w; /* Glyph width (1 to 8 pixels). */
     } charset;
 
     struct {
@@ -22,7 +24,7 @@ typedef struct {
         int h;
     } screen;
 
-    xvec3f32_t color;
+    vec3_t color;
 } glyph_t;
 
 #endif

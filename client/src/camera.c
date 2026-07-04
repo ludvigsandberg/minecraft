@@ -11,17 +11,15 @@
 #include <math.h>
 #include <assert.h>
 
-#include "common/types.h"
-#include "common/vec_f32.h"
-
-#define PI   3.14159265358979323846
-#define PI_2 (PI / 2.0)
+#define PI        3.14159265358979323846
+#define PI_2      (PI / 2.0)
+#define MAX_PITCH 89.9f
 
 void camera_new(camera_t *camera) {
-    camera->pos = (vec3_f32_t){{0.f, 0.f, 0.f}};
+    memset(&camera->pos, 0, sizeof(vec3_t));
 
-    camera->pitch = 0.f;
-    camera->yaw   = 0.f;
+    camera->pitch = 0.0f;
+    camera->yaw   = 0.0f;
 
     camera_update_viewport(camera, 900, 600);
 }
@@ -33,10 +31,10 @@ void camera_update_viewport(camera_t *camera, int width, int height) {
     camera->viewport.width  = width;
     camera->viewport.height = height;
 
-    fov          = 70.f * PI / 180.f;
+    fov          = 70.0f * PI / 180.0f;
     aspect_ratio = (f32)width / (f32)height;
 
-    xperspective_f32(aspect_ratio, fov, 0.1f, 1000.f,
+    xperspective_f32(aspect_ratio, fov, 0.1f, 1000.0f,
                      camera->viewport.projection_matrix);
 }
 void camera_update(camera_t *camera, SDL_Window *window, f32 delta_time) {
@@ -44,21 +42,21 @@ void camera_update(camera_t *camera, SDL_Window *window, f32 delta_time) {
     f32 speed;
     f32 yaw_rad;
     f32 pitch_rad;
-    vec3_f32_t forward;
-    vec3_f32_t right;
+    vec3_t forward;
+    vec3_t right;
     f32 look_speed;
-    vec3_f32_t center;
-    vec3_f32_t up = {{0.f, 1.f, 0.f}};
+    vec3_t center;
+    vec3_t up = {{0.0f, 1.0f, 0.0f}};
 
     assert(camera);
     assert(window);
 
     keys = SDL_GetKeyboardState(NULL);
 
-    speed = 20.f * delta_time;
+    speed = 20.0f * delta_time;
 
-    yaw_rad   = camera->yaw * PI / 180.f;
-    pitch_rad = camera->pitch * PI / 180.f;
+    yaw_rad   = camera->yaw * PI / 180.0f;
+    pitch_rad = camera->pitch * PI / 180.0f;
 
     forward.pos.x = cosf(pitch_rad) * sinf(yaw_rad);
     forward.pos.y = sinf(pitch_rad);
@@ -93,7 +91,7 @@ void camera_update(camera_t *camera, SDL_Window *window, f32 delta_time) {
         camera->pos.pos.y -= speed;
     }
 
-    look_speed = 95.f * delta_time;
+    look_speed = 95.0f * delta_time;
 
     if (keys[SDL_SCANCODE_LEFT]) {
         camera->yaw += look_speed;
@@ -108,13 +106,13 @@ void camera_update(camera_t *camera, SDL_Window *window, f32 delta_time) {
         camera->pitch -= look_speed;
     }
 
-    if (camera->pitch > 89.f) {
-        camera->pitch = 89.f;
+    if (camera->pitch > MAX_PITCH) {
+        camera->pitch = MAX_PITCH;
     }
-    if (camera->pitch < -89.f) {
-        camera->pitch = -89.f;
+    if (camera->pitch < -MAX_PITCH) {
+        camera->pitch = -MAX_PITCH;
     }
 
-    vec3_f32_add(&center, &camera->pos, &forward);
+    vec3_add(&center, &camera->pos, &forward);
     xlook_at_f32(camera->pos, center, up, camera->view_matrix);
 }
