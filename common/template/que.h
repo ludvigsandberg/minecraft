@@ -10,7 +10,7 @@
 
 #include <stddef.h>
 
-#include "$TYPE_INCLUDE$"
+$TYPE_INCLUDE$
 
 typedef struct que_$NAME$_s {
     $TYPE$ *data;

@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define REASONABLE_MAX_ALLOC 10000000
 
@@ -20,7 +21,7 @@ void *checked_malloc(size_t size) {
     p = malloc(size);
 
     if (p == NULL) {
-        fprintf(stderr, "Out of memory. Requested %lu bytes.\n",
+        fprintf(stderr, "Out of memory. Requested %lu bytes.\r\n",
                 (unsigned long)size);
         fflush(stderr);
         abort();
@@ -37,7 +38,7 @@ void *checked_calloc(size_t n, size_t size) {
     p = calloc(n, size);
 
     if (p == NULL) {
-        fprintf(stderr, "Out of memory. Requested %lu bytes.\n",
+        fprintf(stderr, "Out of memory. Requested %lu bytes.\r\n",
                 (unsigned long)size);
         fflush(stderr);
         abort();
@@ -54,7 +55,7 @@ void *checked_realloc(void *ptr, size_t size) {
     p = realloc(ptr, size);
 
     if (p == NULL) {
-        fprintf(stderr, "Out of memory. Requested %lu bytes.\n",
+        fprintf(stderr, "Out of memory. Requested %lu bytes.\r\n",
                 (unsigned long)size);
         fflush(stderr);
         abort();

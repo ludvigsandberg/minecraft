@@ -8,6 +8,9 @@
 #ifndef COMMON_PP_H
 #define COMMON_PP_H
 
+#define INDEX_2D(X, Y, LEN)    ((Y) * (LEN) + (X))
+#define INDEX_3D(X, Y, Z, LEN) ((Z) * (LEN) * (LEN) + (Y) * (LEN) + (X))
+
 #define CONCAT_IMPL(A, B)    A##B
 #define CONCAT(A, B)         CONCAT_IMPL(A, B)
 #define CONCAT_3(A, B, C)    CONCAT(CONCAT(A, B), C)

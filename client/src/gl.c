@@ -30,7 +30,7 @@ static GLuint compile_shader(GLenum type, const char *src) {
         GLchar log[512];
         GLsizei len;
         glGetShaderInfoLog(shader, sizeof log, &len, log);
-        printf("%s\n", log);
+        printf("%s\r\n", log);
         exit(EXIT_FAILURE);
     }
 
@@ -48,7 +48,7 @@ static GLuint load_shader(GLenum type, const char *path) {
     file = fopen(path, "rb");
 
     if (!file) {
-        printf("Failed to open %s\n", path);
+        printf("Failed to open %s\r\n", path);
         exit(EXIT_FAILURE);
     }
 
@@ -98,6 +98,11 @@ void APIENTRY opengl_debug_callback(GLenum src, GLenum type, GLuint id,
     const char *src_str;
     const char *type_str;
     const char *sev_str;
+
+    (void)id;
+    (void)len;
+    (void)msg;
+    (void)ctx;
 
     assert(msg);
 
@@ -177,5 +182,5 @@ void APIENTRY opengl_debug_callback(GLenum src, GLenum type, GLuint id,
             break;
     }
 
-    printf("OpenGL:%s:%s:%s: %s\n", src_str, type_str, sev_str, msg);
+    printf("OpenGL:%s:%s:%s: %s\r\n", src_str, type_str, sev_str, msg);
 }

@@ -8,11 +8,10 @@
 #ifndef CLIENT_CAMERA_H
 #define CLIENT_CAMERA_H
 
-#include <SDL3/SDL.h>
-
 #include "common/types.h"
 #include "common/vec.h"
 #include "common/mat.h"
+#include "client/linux.h"
 
 typedef struct {
     vec3_t pos;
@@ -29,6 +28,6 @@ typedef struct {
 
 void camera_new(camera_t *camera);
 void camera_update_viewport(camera_t *camera, int width, int height);
-void camera_update(camera_t *camera, SDL_Window *window, f32 delta_time);
+void camera_update(camera_t *camera, const window_t *window, f32 delta_time);
 
 #endif

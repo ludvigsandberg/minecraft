@@ -13,72 +13,35 @@
 #include <string.h>
 #include <assert.h>
 
+#include "common/pp.h"
 #include "client/arr_f32.h"
 #include "client/arr_u32.h"
 #include "client/world.h"
 
 static const f32 cube_positions[72] = {
-    // front
-    -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
-    // back
-    0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
-    -0.5f,
-    // left
-    -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f,
-    -0.5f,
-    // right
-    0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f,
-    // top
-    -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f,
-    // bottom
-    -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, -0.5f, -0.5f,
-    0.5f};
+    -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,
+    -0.5f, 0.5f,  0.5f,  0.5f,  -0.5f, -0.5f, -0.5f, -0.5f, -0.5f,
+    -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
+    -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f,
+    0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f,
+    0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,  0.5f,
+    0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
+    0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f};
 
 static const f32 cube_uvs[48] = {
-    // front
-    0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-    // back
-    0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-    // left
-    1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-    // right
-    0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-    // top
-    0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-    // bottom
-    0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
+    0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+    1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f};
 
 static const int cube_face_dirs[6][3] = {
-    // front
-    {0, 0, 1},
-    // back
-    {0, 0, -1},
-    // left
-    {-1, 0, 0},
-    // right
-    {1, 0, 0},
-    // top
-    {0, 1, 0},
-    // bottom
-    {0, -1, 0},
+    {0, 0, 1}, {0, 0, -1}, {-1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, -1, 0},
 };
 
-static const f32 cube_shadows[6] = {
-    // front
-    0.90f,
-    // back
-    0.60f,
-    // left
-    0.50f,
-    // right
-    0.70f,
-    // top
-    1.00f,
-    // bottom
-    0.55f};
+static const f32 cube_shadows[6] = {0.90f, 0.60f, 0.50f, 0.70f, 1.00f, 0.55f};
 
-static bool is_face_visible(blocks_t blocks, int x, int y, int z, int dx,
-                            int dy, int dz) {
+static int is_face_visible(blocks_t blocks, int x, int y, int z, int dx,
+                           int dy, int dz) {
     int nx;
     int ny;
     int nz;
@@ -100,15 +63,15 @@ static u8 get_face_light_level(chunk_t *chunk, int x, int y, int z, int dx,
     int nx;
     int ny;
     int nz;
-    int chunk_dx;
-    int chunk_dy;
-    int chunk_dz;
-    int neighbor_chunk_x;
-    int neighbor_chunk_y;
-    int neighbor_chunk_z;
-    int local_chunk_x;
-    int local_chunk_y;
-    int local_chunk_z;
+    s64 chunk_dx;
+    s64 chunk_dy;
+    s64 chunk_dz;
+    s64 neighbor_chunk_x;
+    s64 neighbor_chunk_y;
+    s64 neighbor_chunk_z;
+    s64 local_chunk_x;
+    s64 local_chunk_y;
+    s64 local_chunk_z;
     size_t index;
     chunk_t *neighbor;
     int lx;
@@ -129,9 +92,9 @@ static u8 get_face_light_level(chunk_t *chunk, int x, int y, int z, int dx,
     chunk_dy = (ny < 0) ? -1 : (ny >= CHUNK_SIZE) ? 1 : 0;
     chunk_dz = (nz < 0) ? -1 : (nz >= CHUNK_SIZE) ? 1 : 0;
 
-    neighbor_chunk_x = chunk->coord.nth[0] + chunk_dx;
-    neighbor_chunk_y = chunk->coord.nth[1] + chunk_dy;
-    neighbor_chunk_z = chunk->coord.nth[2] + chunk_dz;
+    neighbor_chunk_x = chunk->coord.x + chunk_dx;
+    neighbor_chunk_y = chunk->coord.y + chunk_dy;
+    neighbor_chunk_z = chunk->coord.z + chunk_dz;
 
     local_chunk_x =
         neighbor_chunk_x - (world->center_chunk_coord.x - RENDER_DISTANCE);
@@ -148,8 +111,8 @@ static u8 get_face_light_level(chunk_t *chunk, int x, int y, int z, int dx,
         return 15;
     }
 
-    index = INDEX_3D(local_chunk_x, local_chunk_y, local_chunk_z,
-                     LOADED_CHUNKS_LEN);
+    index = (size_t)INDEX_3D(local_chunk_x, local_chunk_y, local_chunk_z,
+                             LOADED_CHUNKS_LEN);
 
     neighbor = world->loaded_chunks[index];
     if (!neighbor)
@@ -171,8 +134,8 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
 
     /* Batch block faces into mesh. */
 
-    arr_f32_new_reserve(mesh_vertices, CHUNK_TOTAL * 6 * 4 * 7);
-    arr_u32_new_reserve(mesh_indices, CHUNK_TOTAL * 6 * 6);
+    arr_f32_new_reserve(&mesh_vertices, CHUNK_TOTAL * 6 * 4 * 7);
+    arr_u32_new_reserve(&mesh_indices, CHUNK_TOTAL * 6 * 6);
 
     for (x = 0; x < CHUNK_SIZE; x++) {
         for (y = 0; y < CHUNK_SIZE; y++) {
@@ -195,9 +158,11 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                 /* For each face. */
 
                 for (face_idx = 0; face_idx < 6; face_idx++) {
-                    int dir[3] = {cube_face_dirs[face_idx][0],
-                                  cube_face_dirs[face_idx][1],
-                                  cube_face_dirs[face_idx][2]};
+                    int dir[3];
+
+                    dir[0] = cube_face_dirs[face_idx][0];
+                    dir[1] = cube_face_dirs[face_idx][1];
+                    dir[2] = cube_face_dirs[face_idx][2];
 
                     if (is_face_visible(chunk->blocks, x, y, z, dir[0], dir[1],
                                         dir[2])) {
@@ -211,11 +176,11 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                             size_t num_vertices;
                             u32 index;
 
-                            num_vertices = xalen(mesh_vertices) / 7;
+                            num_vertices = mesh_vertices.size / 7;
 
-                            index = num_vertices + face_indices[i];
+                            index = (u32)num_vertices + face_indices[i];
 
-                            arr_u32_append(&mesh_indices, index);
+                            arr_u32_append(&mesh_indices, &index);
                         }
 
                         /* Append vertices. */
@@ -224,20 +189,25 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                                                      dir[1], dir[2], world);
 
                         for (i = 0; i < 4; i++) {
-                            size_t p = face_idx * 12 + i * 3;
-                            size_t t = face_idx * 8 + i * 2;
+                            size_t p;
+                            size_t t;
+                            f32 vertex[7];
 
-                            f32 vertex[7] = {
-                                cube_positions[p + 0] + x,
-                                cube_positions[p + 1] + y,
-                                cube_positions[p + 2] + z,
+                            p = (size_t)face_idx * 12 + (size_t)i * 3;
+                            t = (size_t)face_idx * 8 + (size_t)i * 2;
 
-                                cube_uvs[t + 0] / 16.0f + VEC_U(uv_offs),
-                                cube_uvs[t + 1] / 16.0f + VEC_V(uv_offs),
+                            vertex[0] = cube_positions[p + 0] + (f32)x;
+                            vertex[1] = cube_positions[p + 1] + (f32)y;
+                            vertex[2] = cube_positions[p + 2] + (f32)z;
 
-                                cube_shadows[face_idx],
+                            vertex[3] =
+                                cube_uvs[t + 0] / 16.0f + VEC_U(uv_offs);
+                            vertex[4] =
+                                cube_uvs[t + 1] / 16.0f + VEC_V(uv_offs);
 
-                                (f32)light};
+                            vertex[5] = cube_shadows[face_idx];
+
+                            vertex[6] = (f32)light;
 
                             arr_f32_append_n(&mesh_vertices, 7, vertex);
                         }
@@ -252,16 +222,20 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
     glBindVertexArray(chunk->vertex_array);
 
     glBindBuffer(GL_ARRAY_BUFFER, chunk->vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, mesh_vertices.size * sizeof(f32), NULL,
+    glBufferData(GL_ARRAY_BUFFER,
+                 (GLsizeiptr)(mesh_vertices.size * sizeof(f32)), NULL,
                  GL_DYNAMIC_DRAW); /* Buffer orphaning. */
-    glBufferSubData(GL_ARRAY_BUFFER, 0, mesh_vertices.size * sizeof(f32),
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    (GLsizeiptr)(mesh_vertices.size * sizeof(f32)),
                     mesh_vertices.data);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, chunk->element_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, xalen(mesh_indices) * sizeof(u32),
-                 NULL, GL_DYNAMIC_DRAW); /* Buffer orphaning. */
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 (GLsizeiptr)(mesh_indices.size * sizeof(u32)), NULL,
+                 GL_DYNAMIC_DRAW); /* Buffer orphaning. */
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
-                    mesh_indices.size * sizeof(u32), mesh_indices.data);
+                    (GLsizeiptr)(mesh_indices.size * sizeof(u32)),
+                    mesh_indices.data);
 
     chunk->num_indices = mesh_indices.size;
 
@@ -273,6 +247,8 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
 
 void chunk_new(chunk_t *chunk, blocks_t blocks, const coord_t *chunk_coord,
                world_t *world) {
+    (void)world;
+
     /* Init. */
 
     chunk->dirty = true;
@@ -314,7 +290,7 @@ void chunk_free(chunk_t *chunk) {
     glDeleteVertexArrays(1, &chunk->vertex_array);
 }
 
-void chunk_update(chunk_t *chunk, world_t *world) {
+void chunk_update(chunk_t *chunk, const world_t *world) {
     if (chunk->dirty) {
         chunk_calculate_light(chunk, world);
         generate_mesh(chunk, world);

@@ -2,18 +2,24 @@
  * File:        main.c
  * Author:      ludvigsandberg
  * Date:        2026-06-20
- * Description: -
+ * Description: Client entry point.
  *****************************************************************************/
 
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
 #include <assert.h>
 
-#include <glad/glad.h>
-#include <SDL3/SDL.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/keysym.h>
 
+#include <glad/glad.h>
+#include <GL/glx.h>
+
+#include "common/types.h"
+#include "client/linux.h"
 #include "client/gl.h"
 #include "client/chunk.h"
 #include "client/world.h"
@@ -22,45 +28,17 @@
 #include "client/gui.h"
 
 int main(int argc, char **argv) {
+    window_t window;
     camera_t camera;
-    SDL_Window *window;
-    SDL_GLContext context;
     world_t world;
     sky_t sky;
     gui_t gui;
-    f32 prev_timestamp;
+    f64 last_time;
 
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        exit(EXIT_FAILURE);
-    }
+    (void)argc;
+    (void)argv;
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
-                        SDL_GL_CONTEXT_PROFILE_CORE);
-#ifndef NDEBUG
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-#endif
-
-    camera_new(&camera);
-
-    window = SDL_CreateWindow("minecraft", camera.viewport.width,
-                              camera.viewport.height,
-                              SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-
-    if (!window) {
-        exit(EXIT_FAILURE);
-    }
-
-    context = SDL_GL_CreateContext(window);
-
-    if (!context) {
-        exit(EXIT_FAILURE);
-    }
-
-    if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
-        exit(EXIT_FAILURE);
-    }
+    window_new(&window);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -75,77 +53,36 @@ int main(int argc, char **argv) {
     glDebugMessageCallback(opengl_debug_callback, NULL);
 #endif
 
+    camera_new(&camera);
     world_new(&world);
     sky_new(&sky);
     gui_new(&gui);
 
-    prev_timestamp = (f32)SDL_GetTicks() / 1000.f;
+    last_time = get_time_in_seconds();
 
-    while (true) {
-        SDL_Event event;
-        f32 timestamp;
+    while (TRUE) {
+        f64 current_time;
         f32 delta_time;
-        coord_t center;
-        f32 radius = 5;
-        s64 x;
-        s64 y;
-        s64 z;
         int vertical = 16;
 
         /* Update. */
 
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-                case SDL_EVENT_QUIT: {
-                    goto end;
-                }
-
-                case SDL_EVENT_WINDOW_RESIZED: {
-                    glViewport(0, 0, event.window.data1, event.window.data2);
-                    camera_update_viewport(&camera, event.window.data1,
-                                           event.window.data2);
-                    break;
-                }
-            }
+        while (XPending(window.display)) {
+            XEvent event;
+            XNextEvent(window.display, &event);
         }
 
-        timestamp      = (f32)SDL_GetTicks() / 1000.f;
-        delta_time     = timestamp - prev_timestamp;
-        prev_timestamp = timestamp;
+        window_update(&window);
 
-        camera_update(&camera, window, delta_time);
+        current_time = get_time_in_seconds();
+        delta_time   = (f32)(current_time - last_time);
+        last_time    = current_time;
 
-        /* Carve out blocks around camera. */
-
-#ifdef 0
-        center = {{(s64)camera.pos.x, (s64)camera.pos.y, (s64)camera.pos.z}};
-
-        for (x = center.x - radius; x <= center.x + radius; x++) {
-            for (y = center.y - radius; y <= center.y + radius; y++) {
-                for (z = center.z - radius; z <= center.z + radius; z++) {
-                    coord_t diff;
-                    f32 len;
-
-                    diff.x = x - center.x;
-                    diff.y = y - center.y;
-                    diff.z = z - center.z;
-
-                    len = sqrtf((f32)(diff.x * diff.x + diff.y * diff.y +
-                                      diff.z * diff.z));
-
-                    if (len <= radius) {
-                        coord_t current = {{x, y, z}};
-
-                        world_set_block(&world, &current, BLOCK_AIR);
-                    }
-                }
-            }
-        }
-#endif
+        camera_update(&camera, &window, delta_time);
 
         world_update(&world, &camera);
 
-        // draw
+        /* Draw. */
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -154,7 +91,8 @@ int main(int argc, char **argv) {
         world_draw(&world, &camera);
 
         gui_text(&gui, 10, 10, "minecraft");
-        gui_text(&gui, 10, 10 + vertical, "frame %.1fms", delta_time * 1000.f);
+        gui_text(&gui, 10, 10 + vertical, "frame %.1fms",
+                 delta_time * 1000.0f);
 
         gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", VEC_X(camera.pos));
         gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", VEC_Y(camera.pos));
@@ -165,8 +103,6 @@ int main(int argc, char **argv) {
 
         gui_draw(&gui, camera.viewport.width, camera.viewport.height);
 
-        SDL_GL_SwapWindow(window);
+        glXSwapBuffers(window.display, window.handle);
     }
-
-end:;
 }

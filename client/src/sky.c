@@ -7,12 +7,14 @@
 
 #include "client/sky.h"
 
+#include "common/mat.h"
+
 static const float vertices[] = {-1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
                                  -1.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 1.0f};
 
 void sky_new(sky_t *sky) {
     sky->shader_program =
-        shader_program_new("res/sky_vs.glsl", "res/sky_fs.glsl");
+        shader_program_new("client/res/sky_vs.glsl", "client/res/sky_fs.glsl");
 
     sky->uniform_loc.inv_view_matrix =
         glGetUniformLocation(sky->shader_program, "invView");
@@ -36,7 +38,7 @@ void sky_draw(sky_t *sky, camera_t *camera) {
 
     glUseProgram(sky->shader_program);
 
-    xmat4_invert_view_f32(camera->view_matrix, inv_view_matrix);
+    invert_view(&inv_view_matrix, &camera->view_matrix);
     glUniformMatrix4fv(sky->uniform_loc.inv_view_matrix, 1, GL_FALSE,
                        (const GLfloat *)inv_view_matrix.elems);
 

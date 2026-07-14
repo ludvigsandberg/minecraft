@@ -1,5 +1,0 @@
-{
-    "C_Cpp.default.cStandard": "c89",
-    "editor.formatOnSave": true,
-    "C_Cpp.default.compilerPath": "/usr/bin/gcc"
-}

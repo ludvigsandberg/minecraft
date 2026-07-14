@@ -9,40 +9,18 @@
 
 #include <stdio.h>
 
+#include "common/pp.h"
 #include "common/types.h"
 #include "client/world.h"
 
-static const coord_t dirs[6] = {
-    /* Front. */
-    {{0, 0, 1}},
-    /* Back. */
-    {{0, 0, -1}},
-    /* Left. */
-    {{-1, 0, 0}},
-    /* Right. */
-    {{1, 0, 0}},
-    /* Top. */
-    {{0, 1, 0}},
-    /* Bottom. */
-    {{0, -1, 0}},
-};
-
-static s64 floor_div(s64 a, s64 b) {
-    s64 q = a / b;
-    s64 r = a % b;
-    if ((r != 0) && ((r < 0) != (b < 0))) {
-        q--;
-    }
-    return q;
-}
-
-static int floor_mod(s64 a, s64 b) {
-    s64 r = a % b;
-    if (r < 0) {
-        r += b;
-    }
-    return r;
-}
+/*static const coord_t dirs[6] = {
+    {0, 0, 1},
+    {0, 0, -1},
+    {-1, 0, 0},
+    {1, 0, 0},
+    {0, 1, 0},
+    {0, -1, 0},
+};*/
 
 typedef struct {
     coord_t block_pos;
@@ -169,6 +147,9 @@ block_pos.pos.y, block_pos.pos.z, CHUNK_SIZE);
 }*/
 
 void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
+    (void)chunk;
+    (void)world;
+
     /*memset(chunk->light, 0, CHUNK_TOTAL * sizeof(u8));
 
     floodfill_queue_t floodfill_queue;
@@ -198,7 +179,7 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
             int nz = current.block_pos.pos.z + dirs[i].pos.z;
 
             // check if neighboring block is inside current chunk
-            bool inside = nx >= 0 && nx < CHUNK_SIZE && ny >= 0 &&
+            int inside = nx >= 0 && nx < CHUNK_SIZE && ny >= 0 &&
                           ny < CHUNK_SIZE && nz >= 0 && nz < CHUNK_SIZE;
 
             if (!inside) {
@@ -270,30 +251,30 @@ void chunk_calculate_light(chunk_t *chunk, const world_t *world) {
 }
 
 u8 chunk_get_skylight(const chunk_t *chunk, const coord_t *block_pos) {
-    return (chunk->light[INDEX_3D(block_pos->pos.x, block_pos->pos.y,
-                                  block_pos->pos.z, CHUNK_SIZE)] >>
+    return (chunk->light[INDEX_3D(block_pos->x, block_pos->y, block_pos->z,
+                                  CHUNK_SIZE)] >>
             4) &
            0xf;
 }
 
 void chunk_set_skylight(chunk_t *chunk, const coord_t *block_pos,
                         u8 intensity) {
-    size_t i = INDEX_3D(block_pos->pos.x, block_pos->pos.y, block_pos->pos.z,
-                        CHUNK_SIZE);
+    size_t i =
+        (size_t)INDEX_3D(block_pos->x, block_pos->y, block_pos->z, CHUNK_SIZE);
 
     chunk->light[i] = (chunk->light[i] & 0xf) | (intensity << 4);
 }
 
 u8 chunk_get_block_light(const chunk_t *chunk, const coord_t *block_pos) {
-    return chunk->light[INDEX_3D(block_pos->pos.x, block_pos->pos.y,
-                                 block_pos->pos.z, CHUNK_SIZE)] &
+    return chunk->light[INDEX_3D(block_pos->x, block_pos->y, block_pos->z,
+                                 CHUNK_SIZE)] &
            0xf;
 }
 
 void chunk_set_block_light(chunk_t *chunk, const coord_t *block_pos,
                            u8 intensity) {
-    size_t i = INDEX_3D(block_pos->pos.x, block_pos->pos.y, block_pos->pos.z,
-                        CHUNK_SIZE);
+    size_t i =
+        (size_t)INDEX_3D(block_pos->x, block_pos->y, block_pos->z, CHUNK_SIZE);
 
     chunk->light[i] = (chunk->light[i] & 0xf0) | intensity;
 }

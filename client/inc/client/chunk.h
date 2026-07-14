@@ -13,6 +13,7 @@
 #include <glad/glad.h>
 
 #include "common/types.h"
+#include "common/coord.h"
 
 #define BLOCK_AIR   0
 #define BLOCK_GRASS 1
@@ -21,10 +22,7 @@
 #define CHUNK_SIZE  16
 #define CHUNK_TOTAL CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE
 
-#define INDEX_2D(X, Y, LEN)    ((Y) * (LEN) + (X))
-#define INDEX_3D(X, Y, Z, LEN) ((Z) * (LEN) * (LEN) + (Y) * (LEN) + (X))
-
-struct world_t; /* Forward declare. */
+struct world_s; /* Forward declare. */
 
 typedef u8 blocks_t[CHUNK_TOTAL];
 
@@ -36,7 +34,7 @@ typedef struct {
     /* First 4 bits = skylight, last 4 bits = block light. */
     u8 light[CHUNK_TOTAL];
 
-    bool dirty; /* Whether mesh needs to be regenerated. */
+    int dirty; /* Whether mesh needs to be regenerated. */
 
     GLuint vertex_array;
     GLuint vertex_buffer;
@@ -45,11 +43,11 @@ typedef struct {
 } chunk_t;
 
 void chunk_new(chunk_t *chunk, blocks_t blocks, const coord_t *chunk_coord,
-               struct world_t *world);
+               struct world_s *world);
 void chunk_free(chunk_t *chunk);
-void chunk_update(chunk_t *chunk, const struct world_t *world);
+void chunk_update(chunk_t *chunk, const struct world_s *world);
 
-void chunk_calculate_light(chunk_t *chunk, const struct world_t *world);
+void chunk_calculate_light(chunk_t *chunk, const struct world_s *world);
 
 uint8_t chunk_get_skylight(const chunk_t *chunk, const coord_t *block_pos);
 void chunk_set_skylight(chunk_t *chunk, const coord_t *block_pos,

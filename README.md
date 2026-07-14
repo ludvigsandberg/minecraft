@@ -17,8 +17,8 @@ Minecraft in C89/OpenGL
 ## Dependencies
 
 - Linux/WSL
-- OpenGL 4.5
-- C89 compiler
+- OpenGL 3.3
+- GCC/Clang
 - CMake
 
 ## Build
@@ -36,4 +36,4 @@ Locate the client in `build/` and run it.
 
 ## Contribute
 
-Follow the same code style. Install clang-format.
+PRs are welcome. Install clang-format and format using the .clang-format configuration in root.

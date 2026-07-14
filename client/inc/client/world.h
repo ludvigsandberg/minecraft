@@ -8,7 +8,7 @@
 #ifndef CLIENT_WORLD_H
 #define CLIENT_WORLD_H
 
-#include <SDL3/SDL_thread.h>
+#include <pthread.h>
 
 #include "common/coord.h"
 #include "client/gl.h"
@@ -22,16 +22,16 @@
 #define LOADED_CHUNKS_TOTAL                                                   \
     LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN
 
-typedef struct {
+typedef struct world_s {
     coord_t center_chunk_coord;
 
     /* 3D array of pointers to loaded chunks or NULL for unloaded chunks. */
     chunk_t *loaded_chunks[LOADED_CHUNKS_TOTAL];
 
-    SDL_Thread *thread;
-    SDL_Mutex *mutex;
-    SDL_Condition *cond;
-    bool running;
+    pthread_t thread;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int running;
     arr_chunk_job_ptr_t job_queue;
     arr_chunk_result_ptr_t result_queue;
 
@@ -47,8 +47,8 @@ typedef struct {
     } uniform_loc;
 } world_t;
 
-bool world_is_chunk_loaded(const world_t *world, const coord_t *chunk_coord,
-                           chunk_t **chunk);
+int world_is_chunk_loaded(const world_t *world, const coord_t *chunk_coord,
+                          chunk_t **chunk);
 
 void world_to_local_chunk_coord(const coord_t *coord, const coord_t *center,
                                 coord_t *out_local);
@@ -60,6 +60,6 @@ size_t chunk_coord_to_index(const coord_t *coord, const coord_t *center);
 void world_new(world_t *world);
 void world_update(world_t *world, const camera_t *cam);
 void world_draw(world_t *world, camera_t *camera);
-void world_set_block(world_t *world, const coord_t *world_coord, u8 block);
+/*void world_set_block(world_t *world, const coord_t *world_coord, u8 block);*/
 
 #endif

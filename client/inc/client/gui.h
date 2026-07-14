@@ -20,7 +20,7 @@ typedef struct {
         arr_glyph_t glyphs;
 
         GLuint texture;
-        GLuint texture_uniform_loc;
+        GLint texture_uniform_loc;
 
         GLuint shader_program;
 

@@ -5,7 +5,7 @@
  * Description: DO NOT EDIT. Generated from common/template/que.c.
  *****************************************************************************/
 
-#include "$SELF_INCLUDE$"
+$SELF_INCLUDE$
 
 #include <stdlib.h>
 #include <string.h>
