@@ -10,18 +10,18 @@
 
 #include "common/types.h"
 
-#define VEC_X(V) (V).elems[0]
-#define VEC_Y(V) (V).elems[1]
-#define VEC_Z(V) (V).elems[2]
-#define VEC_W(V) (V).elems[3]
-#define VEC_R(V) (V).elems[0]
-#define VEC_G(V) (V).elems[1]
-#define VEC_B(V) (V).elems[2]
-#define VEC_A(V) (V).elems[3]
-#define VEC_U(V) (V).elems[0]
-#define VEC_V(V) (V).elems[1]
-#define VEC_S(V) (V).elems[2]
-#define VEC_T(V) (V).elems[3]
+#define VEC_X elems[0]
+#define VEC_Y elems[1]
+#define VEC_Z elems[2]
+#define VEC_W elems[3]
+#define VEC_R elems[0]
+#define VEC_G elems[1]
+#define VEC_B elems[2]
+#define VEC_A elems[3]
+#define VEC_U elems[0]
+#define VEC_V elems[1]
+#define VEC_S elems[2]
+#define VEC_T elems[3]
 
 typedef struct vec2_s {
     f32 elems[2];

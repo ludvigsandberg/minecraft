@@ -12,20 +12,20 @@
 #include "common/vec.h"
 
 #define MAT3X3_IDENTITY                                                       \
-    {{0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f}}
+    {{1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f}}
 #define MAT4X4_IDENTITY                                                       \
-    {{0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, \
-      1.0f, 0.0f, 0.0f, 0.0f}}
+    {{1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, \
+      0.0f, 0.0f, 0.0f, 1.0f}}
 
-typedef union mat3x3_u {
-    f32 raw[9];
-    f32 elems[3][3];
+#define MAT3X3_AT(COL, ROW) elems[(COL) * 3 + (ROW)]
+#define MAT4X4_AT(COL, ROW) elems[(COL) * 4 + (ROW)]
 
+typedef struct mat3x3_s {
+    f32 elems[9];
 } mat3x3_t;
 
-typedef union mat4x4_u {
-    f32 raw[16];
-    f32 elems[4][4];
+typedef struct mat4x4_s {
+    f32 elems[16];
 } mat4x4_t;
 
 void mat3x3_mul(mat3x3_t *dst, const mat3x3_t *a, const mat3x3_t *b);

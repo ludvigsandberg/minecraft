@@ -17,7 +17,7 @@
 #include "client/arr_chunk_job_ptr.h"
 #include "client/arr_chunk_result_ptr.h"
 
-#define RENDER_DISTANCE   2
+#define RENDER_DISTANCE   4
 #define LOADED_CHUNKS_LEN (RENDER_DISTANCE * 2 + 1)
 #define LOADED_CHUNKS_TOTAL                                                   \
     LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN

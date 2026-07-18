@@ -117,16 +117,16 @@ void gui_text(gui_t *gui, int x, int y, const char *fmt, ...) {
         char c = buf[i];
 
         glyph_t glyph;
-        glyph.charset.x    = c % 16;
-        glyph.charset.y    = c / 16;
-        glyph.charset.w    = glyph_widths[(size_t)c];
-        glyph.screen.x     = cursor;
-        glyph.screen.y     = y;
-        glyph.screen.w     = GLYPH_PIXELS * glyph.charset.w / 8;
-        glyph.screen.h     = GLYPH_PIXELS;
-        VEC_R(glyph.color) = 1.0f;
-        VEC_G(glyph.color) = 1.0f;
-        VEC_B(glyph.color) = 1.0f;
+        glyph.charset.x   = c % 16;
+        glyph.charset.y   = c / 16;
+        glyph.charset.w   = glyph_widths[(size_t)c];
+        glyph.screen.x    = cursor;
+        glyph.screen.y    = y;
+        glyph.screen.w    = GLYPH_PIXELS * glyph.charset.w / 8;
+        glyph.screen.h    = GLYPH_PIXELS;
+        glyph.color.VEC_R = 1.0f;
+        glyph.color.VEC_G = 1.0f;
+        glyph.color.VEC_B = 1.0f;
 
         arr_glyph_append(&gui->charset.glyphs, &glyph);
 
@@ -164,7 +164,7 @@ void gui_draw(gui_t *gui, int window_width, int window_height) {
         f32 v1;
         f32 vertex_data[16];
 
-        glyph = ARR_AT(gui->charset.glyphs, glyph_idx);
+        glyph = gui->charset.glyphs.data[glyph_idx];
 
         /* Append indices. */
 

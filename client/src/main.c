@@ -94,9 +94,9 @@ int main(int argc, char **argv) {
         gui_text(&gui, 10, 10 + vertical, "frame %.1fms",
                  delta_time * 1000.0f);
 
-        gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", VEC_X(camera.pos));
-        gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", VEC_Y(camera.pos));
-        gui_text(&gui, 10, 10 + 5 * vertical, "z %.2f", VEC_Z(camera.pos));
+        gui_text(&gui, 10, 10 + 3 * vertical, "x %.2f", camera.pos.VEC_X);
+        gui_text(&gui, 10, 10 + 4 * vertical, "y %.2f", camera.pos.VEC_Y);
+        gui_text(&gui, 10, 10 + 5 * vertical, "z %.2f", camera.pos.VEC_Z);
 
         gui_text(&gui, 10, 10 + 7 * vertical, "yaw %.2f", camera.yaw);
         gui_text(&gui, 10, 10 + 8 * vertical, "pitch %.2f", camera.pitch);

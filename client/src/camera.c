@@ -16,7 +16,9 @@
 #define MAX_PITCH 89.9f
 
 void camera_new(camera_t *camera) {
-    memset(&camera->pos, 0, sizeof(vec3_t));
+    camera->pos.VEC_X = 0.0f;
+    camera->pos.VEC_Y = 0.0f;
+    camera->pos.VEC_Z = 0.0f;
 
     camera->pitch = 0.0f;
     camera->yaw   = 0.0f;
@@ -54,37 +56,37 @@ void camera_update(camera_t *camera, const window_t *window, f32 delta_time) {
     yaw_rad   = camera->yaw * (f32)PI / 180.0f;
     pitch_rad = camera->pitch * (f32)PI / 180.0f;
 
-    VEC_X(forward) = cosf(pitch_rad) * sinf(yaw_rad);
-    VEC_Y(forward) = sinf(pitch_rad);
-    VEC_Z(forward) = cosf(pitch_rad) * cosf(yaw_rad);
+    forward.VEC_X = cosf(pitch_rad) * sinf(yaw_rad);
+    forward.VEC_Y = sinf(pitch_rad);
+    forward.VEC_Z = cosf(pitch_rad) * cosf(yaw_rad);
 
-    VEC_X(right) = sinf(yaw_rad - (f32)PI_2);
-    VEC_Y(right) = 0.0f;
-    VEC_Z(right) = cosf(yaw_rad - (f32)PI_2);
+    right.VEC_X = sinf(yaw_rad - (f32)PI_2);
+    right.VEC_Y = 0.0f;
+    right.VEC_Z = cosf(yaw_rad - (f32)PI_2);
 
     if (window_is_key_pressed(window, XK_W)) {
-        VEC_X(camera->pos) += VEC_X(forward) * speed;
-        VEC_Y(camera->pos) += VEC_Y(forward) * speed;
-        VEC_Z(camera->pos) += VEC_Z(forward) * speed;
+        camera->pos.VEC_X += forward.VEC_X * speed;
+        camera->pos.VEC_Y += forward.VEC_Y * speed;
+        camera->pos.VEC_Z += forward.VEC_Z * speed;
     }
     if (window_is_key_pressed(window, XK_S)) {
-        VEC_X(camera->pos) -= VEC_X(forward) * speed;
-        VEC_Y(camera->pos) -= VEC_Y(forward) * speed;
-        VEC_Z(camera->pos) -= VEC_Z(forward) * speed;
+        camera->pos.VEC_X -= forward.VEC_X * speed;
+        camera->pos.VEC_Y -= forward.VEC_Y * speed;
+        camera->pos.VEC_Z -= forward.VEC_Z * speed;
     }
     if (window_is_key_pressed(window, XK_A)) {
-        VEC_X(camera->pos) -= VEC_X(right) * speed;
-        VEC_Z(camera->pos) -= VEC_Z(right) * speed;
+        camera->pos.VEC_X -= right.VEC_X * speed;
+        camera->pos.VEC_Z -= right.VEC_Z * speed;
     }
     if (window_is_key_pressed(window, XK_D)) {
-        VEC_X(camera->pos) += VEC_X(right) * speed;
-        VEC_Z(camera->pos) += VEC_Z(right) * speed;
+        camera->pos.VEC_X += right.VEC_X * speed;
+        camera->pos.VEC_Z += right.VEC_Z * speed;
     }
     if (window_is_key_pressed(window, XK_space)) {
-        VEC_Y(camera->pos) += speed;
+        camera->pos.VEC_Y += speed;
     }
     if (window_is_key_pressed(window, XK_Shift_L)) {
-        VEC_Y(camera->pos) -= speed;
+        camera->pos.VEC_Y -= speed;
     }
 
     look_speed = 95.0f * delta_time;

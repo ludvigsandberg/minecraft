@@ -60,7 +60,9 @@ static int is_face_visible(blocks_t blocks, int x, int y, int z, int dx,
 
 static u8 get_face_light_level(chunk_t *chunk, int x, int y, int z, int dx,
                                int dy, int dz, const world_t *world) {
-    int nx;
+    return 16;
+
+    /*int nx;
     int ny;
     int nz;
     s64 chunk_dx;
@@ -122,7 +124,7 @@ static u8 get_face_light_level(chunk_t *chunk, int x, int y, int z, int dx,
     ly = (ny + CHUNK_SIZE) % CHUNK_SIZE;
     lz = (nz + CHUNK_SIZE) % CHUNK_SIZE;
 
-    return neighbor->light[INDEX_3D(lx, ly, lz, CHUNK_SIZE)];
+    return neighbor->light[INDEX_3D(lx, ly, lz, CHUNK_SIZE)];*/
 }
 
 static void generate_mesh(chunk_t *chunk, const world_t *world) {
@@ -152,7 +154,7 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
 
                 switch (block) {
                     case BLOCK_STONE:
-                        VEC_U(uv_offs) = 16.0f / 256.0f;
+                        uv_offs.VEC_U = 16.0f / 256.0f;
                 }
 
                 /* For each face. */
@@ -201,9 +203,9 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                             vertex[2] = cube_positions[p + 2] + (f32)z;
 
                             vertex[3] =
-                                cube_uvs[t + 0] / 16.0f + VEC_U(uv_offs);
+                                cube_uvs[t + 0] / 16.0f + uv_offs.VEC_U;
                             vertex[4] =
-                                cube_uvs[t + 1] / 16.0f + VEC_V(uv_offs);
+                                cube_uvs[t + 1] / 16.0f + uv_offs.VEC_V;
 
                             vertex[5] = cube_shadows[face_idx];
 

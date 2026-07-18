@@ -20,6 +20,59 @@
 #include "client/gl.h"
 #include "client/bitmap.h"
 
+float noise3d(float x, float y, float z) {
+    int xi, yi, zi;
+    int i;
+    float xf, yf, zf;
+    float c[2][2][2];
+    float u, v, w;
+    float a, b, c1, d;
+
+    xi = (int)x;
+    yi = (int)y;
+    zi = (int)z;
+
+    if (x < 0)
+        xi--;
+    if (y < 0)
+        yi--;
+    if (z < 0)
+        zi--;
+
+    xf = x - (f32)xi;
+    yf = y - (f32)yi;
+    zf = z - (f32)zi;
+
+    u = xf * xf * (3.0f - 2.0f * xf);
+    v = yf * yf * (3.0f - 2.0f * yf);
+    w = zf * zf * (3.0f - 2.0f * zf);
+
+    for (i = 0; i < 8; i++) {
+        int xx = xi + (i & 1);
+        int yy = yi + ((i >> 1) & 1);
+        int zz = zi + ((i >> 2) & 1);
+        int n;
+
+        n = xx * 15731 + yy * 789221 + zz * 1376312589;
+        n = (n << 13) ^ n;
+
+        c[i & 1][(i >> 1) & 1][(i >> 2) & 1] =
+            1.0f - ((float)((n * (n * n * 15731 + 789221) + 1376312589) &
+                            0x7fffffff) /
+                    1073741824.0f);
+    }
+
+    a  = c[0][0][0] * (1.0f - u) + c[1][0][0] * u;
+    b  = c[0][1][0] * (1.0f - u) + c[1][1][0] * u;
+    c1 = c[0][0][1] * (1.0f - u) + c[1][0][1] * u;
+    d  = c[0][1][1] * (1.0f - u) + c[1][1][1] * u;
+
+    a = a * (1.0f - v) + b * v;
+    b = c1 * (1.0f - v) + d * v;
+
+    return a * (1.0f - w) + b * w;
+}
+
 void generate(blocks_t blocks, const coord_t *chunk_coord) {
     s64 x;
     s64 y;
@@ -30,9 +83,9 @@ void generate(blocks_t blocks, const coord_t *chunk_coord) {
             for (z = 0; z < CHUNK_SIZE; z++) {
                 u8 *block;
                 coord_t world_coord;
-                /*f32 noise_x;
+                f32 noise_x;
                 f32 noise_y;
-                f32 noise_z;*/
+                f32 noise_z;
                 f32 n;
 
                 block = &blocks[INDEX_3D(x, y, z, CHUNK_SIZE)];
@@ -41,12 +94,11 @@ void generate(blocks_t blocks, const coord_t *chunk_coord) {
                 world_coord.y = chunk_coord->y * CHUNK_SIZE + y;
                 world_coord.z = chunk_coord->z * CHUNK_SIZE + z;
 
-                /*noise_x = (f32)(chunk_coord->x * CHUNK_SIZE + x) / 25.0f;
+                noise_x = (f32)(chunk_coord->x * CHUNK_SIZE + x) / 25.0f;
                 noise_y = (f32)(chunk_coord->y * CHUNK_SIZE + y) / 25.0f;
-                noise_z = (f32)(chunk_coord->z * CHUNK_SIZE + z) / 25.0f;*/
+                noise_z = (f32)(chunk_coord->z * CHUNK_SIZE + z) / 25.0f;
 
-                n = (f32)((f64)rand() / RAND_MAX); /*stb_perlin_noise3(noise_x,
-                                            noise_y, noise_z, 0, 0, 0);*/
+                n = noise3d(noise_x, noise_y, noise_z);
 
                 if (world_coord.y < -10) {
                     if (n > 0.2f) {
@@ -240,9 +292,9 @@ void world_update(world_t *world, const camera_t *cam) {
     size_t i;
     int camera_moved_to_different_chunk = FALSE;
 
-    camera_world_chunk_coord.x = (s64)VEC_X(cam->pos) / CHUNK_SIZE;
-    camera_world_chunk_coord.y = (s64)VEC_Y(cam->pos) / CHUNK_SIZE;
-    camera_world_chunk_coord.z = (s64)VEC_Z(cam->pos) / CHUNK_SIZE;
+    camera_world_chunk_coord.x = (s64)cam->pos.VEC_X / CHUNK_SIZE;
+    camera_world_chunk_coord.y = (s64)cam->pos.VEC_Y / CHUNK_SIZE;
+    camera_world_chunk_coord.z = (s64)cam->pos.VEC_Z / CHUNK_SIZE;
 
     /* Poll threads for new chunks. */
 
@@ -262,7 +314,7 @@ void world_update(world_t *world, const camera_t *cam) {
 
             result->coord.z < camera_world_chunk_coord.z - RENDER_DISTANCE ||
             result->coord.z > camera_world_chunk_coord.z + RENDER_DISTANCE) {
-            break;
+            chunk_within_region = FALSE;
         }
 
         if (chunk_within_region) {
@@ -465,19 +517,19 @@ void world_draw(world_t *world, camera_t *camera) {
                     continue;
                 }
 
-                VEC_X(translation) = (float)(world_chunk_coord.x * CHUNK_SIZE);
-                VEC_Y(translation) = (float)(world_chunk_coord.y * CHUNK_SIZE);
-                VEC_Z(translation) = (float)(world_chunk_coord.z * CHUNK_SIZE);
+                translation.VEC_X = (f32)(world_chunk_coord.x * CHUNK_SIZE);
+                translation.VEC_Y = (f32)(world_chunk_coord.y * CHUNK_SIZE);
+                translation.VEC_Z = (f32)(world_chunk_coord.z * CHUNK_SIZE);
 
                 mat4x4_translate(&model2, &model, &translation);
 
                 glUniformMatrix4fv(world->uniform_loc.model_matrix, 1,
-                                   GL_FALSE, (const GLfloat *)model2.raw);
+                                   GL_FALSE, (const GLfloat *)model2.elems);
                 glUniformMatrix4fv(world->uniform_loc.view_matrix, 1, GL_FALSE,
-                                   (const GLfloat *)camera->view_matrix.raw);
+                                   (const GLfloat *)camera->view_matrix.elems);
                 glUniformMatrix4fv(
                     world->uniform_loc.projection_matrix, 1, GL_FALSE,
-                    (const GLfloat *)camera->viewport.projection_matrix.raw);
+                    (const GLfloat *)camera->viewport.projection_matrix.elems);
 
                 /* Draw. */
 

@@ -12,8 +12,6 @@
 
 $TYPE_INCLUDE$
 
-#define ARR_AT(A, I) (A).data[I]
-
 typedef struct arr_$NAME$_s {
     $TYPE$ *data;
     size_t size;
