@@ -26,6 +26,7 @@
 #include "client/sky.h"
 #include "client/camera.h"
 #include "client/gui.h"
+#include "client/player.h"
 
 int main(int argc, char **argv) {
     window_t window;
@@ -57,13 +58,16 @@ int main(int argc, char **argv) {
     world_new(&world);
     sky_new(&sky);
     gui_new(&gui);
+    player_new();
 
     last_time = get_time_in_seconds();
 
     while (TRUE) {
         f64 current_time;
         f32 delta_time;
-        int vertical = 16;
+        int vertical      = 16;
+        vec3_t player_pos = {{4.0f, 0.0f, 4.0f}};
+        vec3_t player_vel = {{0.5f, 0.0f, 0.5f}};
 
         /* Update. */
 
@@ -102,6 +106,8 @@ int main(int argc, char **argv) {
         gui_text(&gui, 10, 10 + 8 * vertical, "pitch %.2f", camera.pitch);
 
         gui_draw(&gui, camera.viewport.width, camera.viewport.height);
+
+        player_draw(&player_pos, 45.0f, &player_vel, delta_time, &camera);
 
         glXSwapBuffers(window.display, window.handle);
     }

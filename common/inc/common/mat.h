@@ -33,6 +33,10 @@ void mat3x3_mul(mat3x3_t *dst, const mat3x3_t *a, const mat3x3_t *b);
 void mat4x4_mul(mat4x4_t *dst, const mat4x4_t *a, const mat4x4_t *b);
 void mat4x4_translate(mat4x4_t *dst, const mat4x4_t *mat,
                       const vec3_t *offset);
+void mat4x4_rotate_x(mat4x4_t *dst, const mat4x4_t *mat, float angle);
+void mat4x4_rotate_y(mat4x4_t *dst, const mat4x4_t *mat, float angle);
+void mat4x4_rotate_z(mat4x4_t *dst, const mat4x4_t *mat, float angle);
+void mat4x4_scale(mat4x4_t *dst, const mat4x4_t *mat, const vec3_t *scale);
 
 /* Quick inversion of view matrix. */
 void invert_view(mat4x4_t *dst, const mat4x4_t *view);

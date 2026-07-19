@@ -8,6 +8,7 @@
 #include "common/mat.h"
 
 #include <math.h>
+#include <string.h>
 #include <assert.h>
 
 void mat3x3_mul(mat3x3_t *dst, const mat3x3_t *a, const mat3x3_t *b) {
@@ -57,17 +58,108 @@ void mat4x4_mul(mat4x4_t *dst, const mat4x4_t *a, const mat4x4_t *b) {
 void mat4x4_translate(mat4x4_t *dst, const mat4x4_t *mat,
                       const vec3_t *offset) {
     mat4x4_t m = MAT4X4_IDENTITY;
+    mat4x4_t temp;
 
     assert(dst);
     assert(mat);
     assert(offset);
-    assert(dst != mat);
 
     m.MAT4X4_AT(3, 0) = offset->VEC_X;
     m.MAT4X4_AT(3, 1) = offset->VEC_Y;
     m.MAT4X4_AT(3, 2) = offset->VEC_Z;
 
-    mat4x4_mul(dst, mat, &m);
+    if (dst == mat) {
+        mat4x4_mul(&temp, mat, &m);
+        memcpy(dst, &temp, sizeof(mat4x4_t));
+    } else {
+        mat4x4_mul(dst, mat, &m);
+    }
+}
+
+void mat4x4_rotate_x(mat4x4_t *dst, const mat4x4_t *mat, f32 angle) {
+    mat4x4_t rot = MAT4X4_IDENTITY;
+    mat4x4_t temp;
+    f32 c = cosf(angle);
+    f32 s = sinf(angle);
+
+    assert(dst);
+    assert(mat);
+
+    rot.MAT4X4_AT(1, 1) = c;
+    rot.MAT4X4_AT(2, 1) = s;
+    rot.MAT4X4_AT(1, 2) = -s;
+    rot.MAT4X4_AT(2, 2) = c;
+
+    if (dst == mat) {
+        mat4x4_mul(&temp, mat, &rot);
+        memcpy(dst, &temp, sizeof(mat4x4_t));
+    } else {
+        mat4x4_mul(dst, mat, &rot);
+    }
+}
+
+void mat4x4_rotate_y(mat4x4_t *dst, const mat4x4_t *mat, f32 angle) {
+    mat4x4_t rot = MAT4X4_IDENTITY;
+    mat4x4_t temp;
+    f32 c = cosf(angle);
+    f32 s = sinf(angle);
+
+    assert(dst);
+    assert(mat);
+
+    rot.MAT4X4_AT(0, 0) = c;
+    rot.MAT4X4_AT(2, 0) = -s;
+    rot.MAT4X4_AT(0, 2) = s;
+    rot.MAT4X4_AT(2, 2) = c;
+
+    if (dst == mat) {
+        mat4x4_mul(&temp, mat, &rot);
+        memcpy(dst, &temp, sizeof(mat4x4_t));
+    } else {
+        mat4x4_mul(dst, mat, &rot);
+    }
+}
+
+void mat4x4_rotate_z(mat4x4_t *dst, const mat4x4_t *mat, f32 angle) {
+    mat4x4_t rot = MAT4X4_IDENTITY;
+    mat4x4_t temp;
+    f32 c = cosf(angle);
+    f32 s = sinf(angle);
+
+    assert(dst);
+    assert(mat);
+
+    rot.MAT4X4_AT(0, 0) = c;
+    rot.MAT4X4_AT(1, 0) = s;
+    rot.MAT4X4_AT(0, 1) = -s;
+    rot.MAT4X4_AT(1, 1) = c;
+
+    if (dst == mat) {
+        mat4x4_mul(&temp, mat, &rot);
+        memcpy(dst, &temp, sizeof(mat4x4_t));
+    } else {
+        mat4x4_mul(dst, mat, &rot);
+    }
+}
+
+void mat4x4_scale(mat4x4_t *dst, const mat4x4_t *mat, const vec3_t *scale) {
+    mat4x4_t s = MAT4X4_IDENTITY;
+    mat4x4_t temp;
+
+    assert(dst);
+    assert(mat);
+    assert(scale);
+
+    s.MAT4X4_AT(0, 0) = scale->VEC_X;
+    s.MAT4X4_AT(1, 1) = scale->VEC_Y;
+    s.MAT4X4_AT(2, 2) = scale->VEC_Z;
+
+    if (dst == mat) {
+        mat4x4_mul(&temp, mat, &s);
+        memcpy(dst, &temp, sizeof(mat4x4_t));
+    } else {
+        mat4x4_mul(dst, mat, &s);
+    }
 }
 
 void invert_view(mat4x4_t *dst, const mat4x4_t *view) {

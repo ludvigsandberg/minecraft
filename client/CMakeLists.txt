@@ -28,6 +28,7 @@ set(SOURCES
     src/sky.c
     src/world.c
     src/bitmap.c
+    src/player.c
     src/linux.c
     ${CMAKE_CURRENT_BINARY_DIR}/generated/src/arr_u32.c
     ${CMAKE_CURRENT_BINARY_DIR}/generated/src/arr_f32.c
