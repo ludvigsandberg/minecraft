@@ -1,4 +1,4 @@
-#include <minecraft/world.h>
+#include "client/world.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -7,37 +7,93 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define STB_PERLIN_IMPLEMENTATION
-#include <stb_perlin.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "macros.h"
+#include "array.h"
+#include "client/chunk.h"
+#include "client/opengl.h"
+#include "client/file_io.h"
 
-#include <minecraft/chunk.h>
-#include <minecraft/gl.h>
+static float noise3d(float x, float y, float z) {
+    int xi, yi, zi;
+    int i;
+    float xf, yf, zf;
+    float c[2][2][2];
+    float u, v, w;
+    float a, b, c1, d;
 
-void generate(blocks_t blocks, const xvec3i64_t *chunk_coord) {
-    for (int64_t x = 0; x < CHUNK_SIZE; x++) {
-        for (int64_t y = 0; y < CHUNK_SIZE; y++) {
-            for (int64_t z = 0; z < CHUNK_SIZE; z++) {
-                uint8_t *block = &blocks[z * (CHUNK_SIZE * CHUNK_SIZE) +
-                                         y * CHUNK_SIZE + x];
+    xi = (int)x;
+    yi = (int)y;
+    zi = (int)z;
 
-                xvec3i64_t world_coord = {
-                    {chunk_coord->nth[0] * CHUNK_SIZE + x,
-                     chunk_coord->nth[1] * CHUNK_SIZE + y,
-                     chunk_coord->nth[2] * CHUNK_SIZE + z}};
+    if (x < 0)
+        xi--;
+    if (y < 0)
+        yi--;
+    if (z < 0)
+        zi--;
 
-                float noise_x =
-                    (float)(chunk_coord->nth[0] * CHUNK_SIZE + x) / 25.0f;
-                float noise_y =
-                    (float)(chunk_coord->nth[1] * CHUNK_SIZE + y) / 25.0f;
-                float noise_z =
-                    (float)(chunk_coord->nth[2] * CHUNK_SIZE + z) / 25.0f;
+    xf = x - (float)xi;
+    yf = y - (float)yi;
+    zf = z - (float)zi;
 
-                float n =
-                    stb_perlin_noise3(noise_x, noise_y, noise_z, 0, 0, 0);
+    u = xf * xf * (3.0f - 2.0f * xf);
+    v = yf * yf * (3.0f - 2.0f * yf);
+    w = zf * zf * (3.0f - 2.0f * zf);
 
-                if (world_coord.xyz.y < -10) {
+    for (i = 0; i < 8; i++) {
+        int xx = xi + (i & 1);
+        int yy = yi + ((i >> 1) & 1);
+        int zz = zi + ((i >> 2) & 1);
+        int n;
+
+        n = xx * 15731 + yy * 789221 + zz * 1376312589;
+        n = (n << 13) ^ n;
+
+        c[i & 1][(i >> 1) & 1][(i >> 2) & 1] =
+            1.0f - ((float)((n * (n * n * 15731 + 789221) + 1376312589) &
+                            0x7fffffff) /
+                    1073741824.0f);
+    }
+
+    a  = c[0][0][0] * (1.0f - u) + c[1][0][0] * u;
+    b  = c[0][1][0] * (1.0f - u) + c[1][1][0] * u;
+    c1 = c[0][0][1] * (1.0f - u) + c[1][0][1] * u;
+    d  = c[0][1][1] * (1.0f - u) + c[1][1][1] * u;
+
+    a = a * (1.0f - v) + b * v;
+    b = c1 * (1.0f - v) + d * v;
+
+    return a * (1.0f - w) + b * w;
+}
+
+static void generate(unsigned char *blocks, const chunk_coord_t *coord) {
+    long x;
+    long y;
+    long z;
+
+    for (x = 0; x < CHUNK_SIZE; x++) {
+        for (y = 0; y < CHUNK_SIZE; y++) {
+            for (z = 0; z < CHUNK_SIZE; z++) {
+                unsigned char *block;
+                coord_t block_coord;
+                float noise_x;
+                float noise_y;
+                float noise_z;
+                float n;
+
+                block = &blocks[INDEX_3D(x, y, z, CHUNK_SIZE)];
+
+                block_coord.x = coord->x * CHUNK_SIZE + x;
+                block_coord.y = coord->y * CHUNK_SIZE + y;
+                block_coord.z = coord->z * CHUNK_SIZE + z;
+
+                noise_x = (float)(coord->x * CHUNK_SIZE + x) / 25.0f;
+                noise_y = (float)(coord->y * CHUNK_SIZE + y) / 25.0f;
+                noise_z = (float)(coord->z * CHUNK_SIZE + z) / 25.0f;
+
+                n = noise3d(noise_x, noise_y, noise_z);
+
+                if (block_coord.y < -10) {
                     if (n > 0.2f) {
                         *block = BLOCK_AIR;
                     } else {
@@ -55,104 +111,124 @@ void generate(blocks_t blocks, const xvec3i64_t *chunk_coord) {
     }
 }
 
-bool world_is_chunk_loaded(const world_t *world, const xvec3i64_t *chunk_coord,
-                           chunk_t **chunk) {
-    for (size_t i = 0; i < 3; i++) {
-        if (chunk_coord->nth[i] <
-                world->center_chunk_coord.nth[i] - RENDER_DISTANCE ||
-            chunk_coord->nth[i] >
-                world->center_chunk_coord.nth[i] + RENDER_DISTANCE) {
-            return false;
-        }
-    }
-
-    chunk_t *chunk_maybe_loaded = world->loaded_chunks[chunk_coord_to_index(
-        chunk_coord, &world->center_chunk_coord)];
-
-    if (!chunk_maybe_loaded) {
-        return false;
-    }
-
-    if (chunk) {
-        *chunk = chunk_maybe_loaded;
-    }
-
-    return true;
+static void world_to_local_chunk_coord(const chunk_coord_t *coord,
+                                       const chunk_coord_t *center,
+                                       chunk_coord_t *out_local) {
+    out_local->x = coord->x - center->x + RENDER_DISTANCE;
+    out_local->y = coord->y - center->y + RENDER_DISTANCE;
+    out_local->z = coord->z - center->z + RENDER_DISTANCE;
 }
 
-void world_to_local_chunk_coord(const xvec3i64_t *coord,
-                                const xvec3i64_t *center,
-                                xvec3i64_t *out_local) {
-    for (size_t i = 0; i < 3; i++) {
-        out_local->nth[i] = coord->nth[i] - center->nth[i] + RENDER_DISTANCE;
-    }
+static size_t local_chunk_coord_to_index(const chunk_coord_t *local) {
+    return (size_t)INDEX_3D(local->x, local->y, local->z, LOADED_CHUNKS_LEN);
 }
 
-size_t local_chunk_coord_to_index(const xvec3i64_t *local) {
-    return local->nth[0] + LOADED_CHUNKS_LEN * local->nth[1] +
-           LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * local->nth[2];
-}
-
-size_t chunk_coord_to_index(const xvec3i64_t *coord,
-                            const xvec3i64_t *center) {
-    xvec3i64_t local;
+static size_t chunk_coord_to_index(const chunk_coord_t *coord,
+                                   const chunk_coord_t *center) {
+    chunk_coord_t local;
     world_to_local_chunk_coord(coord, center, &local);
 
     return local_chunk_coord_to_index(&local);
 }
 
-static int chunk_load_thread(void *ctx) {
+static int world_is_chunk_loaded(const world_t *world,
+                                 const chunk_coord_t *coord,
+                                 chunk_t **out_chunk) {
+    chunk_t *chunk_maybe_loaded;
+
+    assert(world);
+    assert(coord);
+    assert(out_chunk);
+
+    if (coord->x < world->center.x - RENDER_DISTANCE ||
+        coord->x > world->center.x + RENDER_DISTANCE ||
+
+        coord->y < world->center.y - RENDER_DISTANCE ||
+        coord->y > world->center.y + RENDER_DISTANCE ||
+
+        coord->z < world->center.z - RENDER_DISTANCE ||
+        coord->z > world->center.z + RENDER_DISTANCE) {
+        return FALSE;
+    }
+
+    chunk_maybe_loaded =
+        world->loaded_chunks[chunk_coord_to_index(coord, &world->center)];
+
+    if (!chunk_maybe_loaded) {
+        return FALSE;
+    }
+
+    *out_chunk = chunk_maybe_loaded;
+
+    return TRUE;
+}
+
+static void *chunk_load_thread(void *ctx) {
     world_t *world = ctx;
 
-    while (true) {
-        SDL_LockMutex(world->mutex);
+    while (TRUE) {
+        chunk_job_t *job = NULL;
+        chunk_result_t *res;
 
-        while (world->running && xalen(world->job_queue) == 0) {
-            SDL_WaitCondition(world->cond, world->mutex);
+        pthread_mutex_lock(&world->mutex);
+
+        while (world->is_running && world->job_queue_count == 0) {
+            pthread_cond_wait(&world->cond, &world->mutex);
         }
 
-        if (!world->running) {
-            SDL_UnlockMutex(world->mutex);
+        if (!world->is_running) {
+            pthread_mutex_unlock(&world->mutex);
             break;
         }
 
-        chunk_job_t *job = NULL;
-        if (xalen(world->job_queue) > 0) {
-            job = world->job_queue[xalen(world->job_queue) - 1];
-            xalen(world->job_queue)--;
+        if (world->job_queue_count > 0) {
+            job = world->job_queue[world->job_queue_count - 1];
+
+            world->job_queue_count--;
         }
 
-        SDL_UnlockMutex(world->mutex);
+        pthread_mutex_unlock(&world->mutex);
 
-        chunk_result_t *res = malloc(sizeof(chunk_result_t));
-        res->coord          = job->coord;
+        res        = malloc(sizeof(chunk_result_t));
+        res->coord = job->coord;
         generate(res->blocks, &res->coord);
 
         free(job);
 
-        SDL_LockMutex(world->mutex);
-        xarr_append(world->result_queue, res);
-        SDL_UnlockMutex(world->mutex);
+        pthread_mutex_lock(&world->mutex);
+        ARR_APPEND(world->result_queue, world->result_queue_count,
+                   world->result_queue_cap, &res);
+        pthread_mutex_unlock(&world->mutex);
     }
 
-    return 0;
+    return NULL;
 }
 
-static void load_chunk(world_t *world, const xvec3i64_t *chunk_coord) {
+static void load_chunk(world_t *world, const chunk_coord_t *coord) {
     chunk_job_t *job = malloc(sizeof(chunk_job_t));
-    job->coord       = *chunk_coord;
+    job->coord       = *coord;
 
-    SDL_LockMutex(world->mutex);
-    xarr_append(world->job_queue, job);
-    SDL_SignalCondition(world->cond);
-    SDL_UnlockMutex(world->mutex);
+    pthread_mutex_lock(&world->mutex);
+
+    ARR_APPEND(world->job_queue, world->job_queue_count, world->job_queue_cap,
+               &job);
+    pthread_cond_signal(&world->cond);
+    pthread_mutex_unlock(&world->mutex);
 }
 
-void world_new(world_t *world) {
-    // load shaders
+void world_init(world_t *world) {
+    chunk_coord_t coord;
+
+    struct {
+        unsigned char *data;
+        int width;
+        int height;
+    } atlas;
+
+    /* Load shaders. */
 
     world->shader_program =
-        shader_program_new("res/chunk_vs.glsl", "res/chunk_fs.glsl");
+        opengl_shader_program("res/chunk_vs.glsl", "res/chunk_fs.glsl");
 
     world->uniform_loc.texture =
         glGetUniformLocation(world->shader_program, "atlas");
@@ -165,213 +241,209 @@ void world_new(world_t *world) {
     world->uniform_loc.camera_pos =
         glGetUniformLocation(world->shader_program, "cameraPos");
 
-    // load atlas
+    /* Load atlas. */
 
-    struct {
-        uint8_t *data;
-        int width;
-        int height;
-    } atlas;
+    atlas.data = load_bmp("res/terrain.bmp", &atlas.width, &atlas.height);
 
-    atlas.data =
-        stbi_load("res/atlas.png", &atlas.width, &atlas.height, NULL, 4);
     if (!atlas.data) {
-        printf("Failed to load res/atlas.png: %s\n", stbi_failure_reason());
+        printf("Failed to open %s\r\n", "res/terrain.bmp");
         exit(EXIT_FAILURE);
     }
 
-    glGenTextures(1, &world->texture);
-    glBindTexture(GL_TEXTURE_2D, world->texture);
+    glGenTextures(1, &world->terrain_texture);
+    glBindTexture(GL_TEXTURE_2D, world->terrain_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, atlas.data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    // setup chunk loading threads
+    free(atlas.data);
 
-    xarr_new(world->job_queue);
-    xarr_new(world->result_queue);
+    /* Setup chunk loading threads. */
 
-    world->mutex = SDL_CreateMutex();
-    world->cond  = SDL_CreateCondition();
+    world->job_queue          = NULL;
+    world->job_queue_count    = 0;
+    world->job_queue_cap      = 0;
+    world->result_queue       = NULL;
+    world->result_queue_count = 0;
+    world->result_queue_cap   = 0;
 
-    world->running = true;
-    world->thread  = SDL_CreateThread(chunk_load_thread, "ChunkLoader", world);
+    pthread_mutex_init(&world->mutex, NULL);
+    pthread_cond_init(&world->cond, NULL);
+    world->is_running = true;
+    pthread_create(&world->thread, NULL, chunk_load_thread, world);
 
-    // load chunks
+    /* Load chunks. */
 
-    for (size_t i = 0; i < 3; i++) {
-        world->center_chunk_coord.nth[i] = 0;
-    }
+    world->center.x = 0;
+    world->center.y = 0;
+    world->center.z = 0;
 
     memset(world->loaded_chunks, 0, LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
 
-    xvec3i64_t chunk_coord;
-    for (chunk_coord.nth[0] = -RENDER_DISTANCE;
-         chunk_coord.nth[0] <= RENDER_DISTANCE; chunk_coord.nth[0]++) {
-        for (chunk_coord.nth[1] = -RENDER_DISTANCE;
-             chunk_coord.nth[1] <= RENDER_DISTANCE; chunk_coord.nth[1]++) {
-            for (chunk_coord.nth[2] = -RENDER_DISTANCE;
-                 chunk_coord.nth[2] <= RENDER_DISTANCE; chunk_coord.nth[2]++) {
-                load_chunk(world, &chunk_coord);
+    for (coord.x = -RENDER_DISTANCE; coord.x <= RENDER_DISTANCE; coord.x++) {
+        for (coord.y = -RENDER_DISTANCE; coord.y <= RENDER_DISTANCE;
+             coord.y++) {
+            for (coord.z = -RENDER_DISTANCE; coord.z <= RENDER_DISTANCE;
+                 coord.z++) {
+                load_chunk(world, &coord);
             }
         }
     }
 }
 
 void world_update(world_t *world, const camera_t *cam) {
-    xvec3i64_t camera_world_chunk_coord = {
-        {(int64_t)cam->pos.nth[0] / CHUNK_SIZE,
-         (int64_t)cam->pos.nth[1] / CHUNK_SIZE,
-         (int64_t)cam->pos.nth[2] / CHUNK_SIZE}};
+    chunk_coord_t camera_coord;
+    size_t i;
+    int is_camera_in_different_chunk = FALSE;
 
-    // poll threads for new chunks
+    camera_coord.x = (long)cam->pos.VEC_X / CHUNK_SIZE;
+    camera_coord.y = (long)cam->pos.VEC_Y / CHUNK_SIZE;
+    camera_coord.z = (long)cam->pos.VEC_Z / CHUNK_SIZE;
 
-    SDL_LockMutex(world->mutex);
+    /* Poll threads for new chunks. */
 
-    for (size_t i = 0; i < xalen(world->result_queue); i++) {
-        chunk_result_t *result = world->result_queue[i];
+    pthread_mutex_lock(&world->mutex);
 
-        bool chunk_within_region = true;
+    for (i = 0; i < world->result_queue_count; i++) {
+        chunk_result_t *result;
+        int is_within_region = TRUE;
 
-        for (size_t j = 0; j < 3; j++) {
-            if (result->coord.nth[j] <
-                    camera_world_chunk_coord.nth[j] - RENDER_DISTANCE ||
-                result->coord.nth[j] >
-                    camera_world_chunk_coord.nth[j] + RENDER_DISTANCE) {
-                chunk_within_region = false;
-                break;
-            }
+        result = world->result_queue[i];
+
+        if (labs(result->coord.x - camera_coord.x) > RENDER_DISTANCE ||
+            labs(result->coord.y - camera_coord.y) > RENDER_DISTANCE ||
+            labs(result->coord.z - camera_coord.z) > RENDER_DISTANCE) {
+            is_within_region = FALSE;
         }
 
-        if (chunk_within_region) {
+        if (is_within_region) {
             chunk_t *chunk = malloc(sizeof(chunk_t));
-            chunk_new(chunk, result->blocks, &result->coord, world);
+            chunk_init(chunk, result->blocks, &result->coord);
 
-            world->loaded_chunks[chunk_coord_to_index(
-                &result->coord, &world->center_chunk_coord)] = chunk;
+            world->loaded_chunks[chunk_coord_to_index(&result->coord,
+                                                      &world->center)] = chunk;
         }
 
         free(result);
     }
 
-    xalen(world->result_queue) = 0;
+    world->result_queue_count = 0;
 
-    SDL_UnlockMutex(world->mutex);
+    pthread_mutex_unlock(&world->mutex);
 
-    // check if camera has moved to a different chunk
-
-    bool camera_moved_to_different_chunk = false;
-
-    for (size_t i = 0; i < 3; i++) {
-        if (world->center_chunk_coord.nth[i] !=
-            camera_world_chunk_coord.nth[i]) {
-            camera_moved_to_different_chunk = true;
-            break;
-        }
+    /* Check if camera has moved to a different chunk. */
+    if (world->center.x != camera_coord.x ||
+        world->center.y != camera_coord.y ||
+        world->center.z != camera_coord.z) {
+        is_camera_in_different_chunk = TRUE;
     }
 
-    // move and generate chunks
-    if (camera_moved_to_different_chunk) {
-        xvec3i64_t old_center_chunk_coord = world->center_chunk_coord;
-        world->center_chunk_coord         = camera_world_chunk_coord;
-
-        xvec3i64_t chunk_coord_diff = {
-            {world->center_chunk_coord.nth[0] - old_center_chunk_coord.nth[0],
-             world->center_chunk_coord.nth[1] - old_center_chunk_coord.nth[1],
-             world->center_chunk_coord.nth[2] -
-                 old_center_chunk_coord.nth[2]}};
-
+    /* Move and generate chunks. */
+    if (is_camera_in_different_chunk) {
+        chunk_coord_t old_center;
+        chunk_coord_t diff;
         chunk_t *old_loaded_chunks[LOADED_CHUNKS_TOTAL];
+        long x;
+        long y;
+        long z;
+
+        old_center    = world->center;
+        world->center = camera_coord;
+
+        diff.x = world->center.x - old_center.x;
+        diff.y = world->center.y - old_center.y;
+        diff.z = world->center.z - old_center.z;
+
         memcpy(old_loaded_chunks, world->loaded_chunks,
                LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
 
-        // for each chunk in the new region, check if we can copy the chunk
-        // from the previously loaded region or if a new one has to be
-        // generated
+        /* For each chunk in the new region, check if we can copy the chunk
+           from the previously loaded region or if a new one has to be
+           generated. */
 
-        for (int64_t x = 0; x < LOADED_CHUNKS_LEN; x++) {
-            for (int64_t y = 0; y < LOADED_CHUNKS_LEN; y++) {
-                for (int64_t z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                    xvec3i64_t local_chunk_coord     = {{x, y, z}};
-                    xvec3i64_t old_local_chunk_coord = {
-                        {x + chunk_coord_diff.nth[0],
-                         y + chunk_coord_diff.nth[1],
-                         z + chunk_coord_diff.nth[2]}};
+        for (x = 0; x < LOADED_CHUNKS_LEN; x++) {
+            for (y = 0; y < LOADED_CHUNKS_LEN; y++) {
+                for (z = 0; z < LOADED_CHUNKS_LEN; z++) {
+                    chunk_coord_t coord;
+                    chunk_coord_t old_coord;
+                    int delete   = false;
+                    int can_copy = true;
 
-                    // check if chunk has moved out of new area
-                    // free if so
+                    coord.x = x;
+                    coord.y = y;
+                    coord.z = z;
 
-                    bool delete = false;
-                    for (size_t i = 0; i < 3; i++) {
-                        if (local_chunk_coord.nth[i] <
-                                chunk_coord_diff.nth[i] ||
-                            local_chunk_coord.nth[i] >=
-                                chunk_coord_diff.nth[i] + LOADED_CHUNKS_LEN) {
-                            delete = true;
-                            break;
-                        }
+                    old_coord.x = x + diff.x;
+                    old_coord.y = y + diff.y;
+                    old_coord.z = z + diff.z;
+
+                    /* Free chunk if it has moved out of new area. */
+
+                    if (coord.x < diff.x ||
+                        coord.x >= diff.x + LOADED_CHUNKS_LEN ||
+                        coord.y < diff.y ||
+                        coord.y >= diff.y + LOADED_CHUNKS_LEN ||
+                        coord.z < diff.z ||
+                        coord.z >= diff.z + LOADED_CHUNKS_LEN) {
+                        delete = true;
                     }
 
                     if (delete) {
-                        size_t idx =
-                            local_chunk_coord_to_index(&local_chunk_coord);
+                        size_t idx = local_chunk_coord_to_index(&coord);
 
                         if (old_loaded_chunks[idx]) {
-                            // set chunk below to dirty
-
-                            xvec3i64_t below_chunk_coord =
-                                old_loaded_chunks[idx]->coord;
-                            below_chunk_coord.xyz.y--;
-
+                            chunk_coord_t below_coord;
                             chunk_t *below_chunk;
 
-                            if (world_is_chunk_loaded(
-                                    world, &below_chunk_coord, &below_chunk)) {
+                            /* Set chunk below to dirty. */
+
+                            below_coord = old_loaded_chunks[idx]->coord;
+                            below_coord.y--;
+
+                            if (world_is_chunk_loaded(world, &below_coord,
+                                                      &below_chunk)) {
                                 below_chunk->dirty = true;
                             }
 
-                            // free
+                            /* Free. */
                             chunk_free(old_loaded_chunks[idx]);
                             free(old_loaded_chunks[idx]);
                             old_loaded_chunks[idx] = NULL;
                         }
                     }
 
-                    // check if chunk is still within area and can be copied
+                    /* Copy chunk if it is still within area. */
 
-                    bool can_copy = true;
-                    for (size_t i = 0; i < 3; i++) {
-                        if (old_local_chunk_coord.nth[i] < 0 ||
-                            old_local_chunk_coord.nth[i] >=
-                                LOADED_CHUNKS_LEN) {
-                            can_copy = false;
-                            break;
-                        }
+                    if (old_coord.x < 0 || old_coord.x >= LOADED_CHUNKS_LEN ||
+                        old_coord.y < 0 || old_coord.y >= LOADED_CHUNKS_LEN ||
+                        old_coord.z < 0 || old_coord.z >= LOADED_CHUNKS_LEN) {
+                        can_copy = false;
                     }
 
-                    // copy chunk
+                    /* Copy chunk. */
                     if (can_copy) {
                         chunk_t *old =
                             old_loaded_chunks[local_chunk_coord_to_index(
-                                &old_local_chunk_coord)];
+                                &old_coord)];
 
                         world->loaded_chunks[local_chunk_coord_to_index(
-                            &local_chunk_coord)] = old;
+                            &coord)] = old;
                     }
-                    // generate new chunk
+                    /* Generate new chunk. */
                     else {
-                        xvec3i64_t chunk_coord;
-                        for (size_t i = 0; i < 3; i++) {
-                            chunk_coord.nth[i] =
-                                local_chunk_coord.nth[i] +
-                                world->center_chunk_coord.nth[i] -
-                                RENDER_DISTANCE;
-                        }
+                        chunk_coord_t chunk_coord;
+
+                        chunk_coord.x =
+                            coord.x + world->center.x - RENDER_DISTANCE;
+                        chunk_coord.y =
+                            coord.y + world->center.y - RENDER_DISTANCE;
+                        chunk_coord.z =
+                            coord.z + world->center.z - RENDER_DISTANCE;
 
                         world->loaded_chunks[local_chunk_coord_to_index(
-                            &local_chunk_coord)] = NULL;
+                            &coord)] = NULL;
 
                         load_chunk(world, &chunk_coord);
                     }
@@ -380,8 +452,8 @@ void world_update(world_t *world, const camera_t *cam) {
         }
     }
 
-    // update chunks
-    for (size_t i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
+    /* Update chunks. */
+    for (i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
         if (world->loaded_chunks[i]) {
             chunk_update(world->loaded_chunks[i], world);
         }
@@ -389,141 +461,64 @@ void world_update(world_t *world, const camera_t *cam) {
 }
 
 void world_draw(world_t *world, camera_t *camera) {
+    int x;
+    int y;
+    int z;
+
     glUseProgram(world->shader_program);
 
     glUniform1i(world->uniform_loc.texture, 0);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, world->texture);
+    glBindTexture(GL_TEXTURE_2D, world->terrain_texture);
 
     glUniform3fv(world->uniform_loc.camera_pos, 1,
-                 (const GLfloat *)camera->pos.nth);
+                 (const GLfloat *)camera->pos.elems);
 
-    // for each chunk
-    for (int x = 0; x < LOADED_CHUNKS_LEN; x++) {
-        for (int y = 0; y < LOADED_CHUNKS_LEN; y++) {
-            for (int z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                // translate to world coordinates
+    /* For each chunk. */
+    for (x = 0; x < LOADED_CHUNKS_LEN; x++) {
+        for (y = 0; y < LOADED_CHUNKS_LEN; y++) {
+            for (z = 0; z < LOADED_CHUNKS_LEN; z++) {
+                chunk_coord_t world_coord;
+                chunk_t *chunk;
+                mat4x4_t model = MAT4X4_IDENTITY;
+                vec3_t translation;
+                mat4x4_t model2;
 
-                xvec3i64_t world_chunk_coord = {
-                    {x + world->center_chunk_coord.nth[0] - RENDER_DISTANCE,
-                     y + world->center_chunk_coord.nth[1] - RENDER_DISTANCE,
-                     z + world->center_chunk_coord.nth[2] - RENDER_DISTANCE}};
+                /* Translate to world coordinates. */
 
-                chunk_t *chunk = world->loaded_chunks[chunk_coord_to_index(
-                    &world_chunk_coord, &world->center_chunk_coord)];
+                world_coord.x = x + world->center.x - RENDER_DISTANCE;
+                world_coord.y = y + world->center.y - RENDER_DISTANCE;
+                world_coord.z = z + world->center.z - RENDER_DISTANCE;
 
-                // skip if not loaded
+                chunk = world->loaded_chunks[chunk_coord_to_index(
+                    &world_coord, &world->center)];
+
+                /* Skip if not loaded. */
                 if (!chunk) {
                     continue;
                 }
 
-                xmat4f32_t model;
-                xmat_identity_f32(model);
-                xvec3f32_t translation = {
-                    {(float)(world_chunk_coord.nth[0] * CHUNK_SIZE),
-                     (float)(world_chunk_coord.nth[1] * CHUNK_SIZE),
-                     (float)(world_chunk_coord.nth[2] * CHUNK_SIZE)}};
-                xmat4f32_t model2;
-                xmat4f32_translate(model, translation, model2);
+                translation.VEC_X = (float)(world_coord.x * CHUNK_SIZE);
+                translation.VEC_Y = (float)(world_coord.y * CHUNK_SIZE);
+                translation.VEC_Z = (float)(world_coord.z * CHUNK_SIZE);
+
+                model2 = mat4x4_translate(&model, &translation);
 
                 glUniformMatrix4fv(world->uniform_loc.model_matrix, 1,
-                                   GL_FALSE, (const GLfloat *)model2.nth);
+                                   GL_FALSE, (const GLfloat *)model2.elems);
                 glUniformMatrix4fv(world->uniform_loc.view_matrix, 1, GL_FALSE,
-                                   (const GLfloat *)camera->view_matrix.nth);
+                                   (const GLfloat *)camera->view_matrix.elems);
                 glUniformMatrix4fv(
                     world->uniform_loc.projection_matrix, 1, GL_FALSE,
-                    (const GLfloat *)camera->viewport.projection_matrix.nth);
+                    (const GLfloat *)camera->viewport.projection_matrix.elems);
 
-                // draw
+                /* Draw. */
 
                 glBindVertexArray(chunk->vertex_array);
 
-                glDrawElements(GL_TRIANGLES, chunk->num_indices,
+                glDrawElements(GL_TRIANGLES, (GLsizei)chunk->index_count,
                                GL_UNSIGNED_INT, 0);
             }
         }
-    }
-}
-
-static int floor_div(int a, int b) {
-    return (a >= 0) ? (a / b) : ((a - b + 1) / b);
-}
-
-void world_set_block(world_t *world, const xvec3i64_t *world_coord,
-                     uint8_t block) {
-    xvec3i64_t chunk_coord = {{floor_div(world_coord->nth[0], CHUNK_SIZE),
-                               floor_div(world_coord->nth[1], CHUNK_SIZE),
-                               floor_div(world_coord->nth[2], CHUNK_SIZE)}};
-
-    xvec3i64_t local = {
-        {world_coord->nth[0] - chunk_coord.nth[0] * CHUNK_SIZE,
-         world_coord->nth[1] - chunk_coord.nth[1] * CHUNK_SIZE,
-         world_coord->nth[2] - chunk_coord.nth[2] * CHUNK_SIZE}};
-
-    xvec3i64_t local_chunk_coord = {
-        {chunk_coord.nth[0] -
-             (world->center_chunk_coord.nth[0] - RENDER_DISTANCE),
-         chunk_coord.nth[1] -
-             (world->center_chunk_coord.nth[1] - RENDER_DISTANCE),
-         chunk_coord.nth[2] -
-             (world->center_chunk_coord.nth[2] - RENDER_DISTANCE)}};
-
-    for (int i = 0; i < 3; i++) {
-        if (local_chunk_coord.nth[i] < 0 ||
-            local_chunk_coord.nth[i] >= LOADED_CHUNKS_LEN)
-            return;
-    }
-
-    size_t chunk_index = local_chunk_coord_to_index(&local_chunk_coord);
-
-    chunk_t *chunk = world->loaded_chunks[chunk_index];
-    if (!chunk)
-        return;
-
-    size_t block_index = local.nth[2] * (CHUNK_SIZE * CHUNK_SIZE) +
-                         local.nth[1] * CHUNK_SIZE + local.nth[0];
-
-    uint8_t old_block = chunk->blocks[block_index];
-    if (old_block == block)
-        return;
-
-    chunk->blocks[block_index] = block;
-    chunk->light[block_index]  = 0;
-    chunk->dirty               = true;
-
-    const int dx[6] = {-1, 1, 0, 0, 0, 0};
-    const int dy[6] = {0, 0, -1, 1, 0, 0};
-    const int dz[6] = {0, 0, 0, 0, -1, 1};
-
-    for (int i = 0; i < 6; i++) {
-        int nx = local.nth[0] + dx[i];
-        int ny = local.nth[1] + dy[i];
-        int nz = local.nth[2] + dz[i];
-
-        if (nx < 0 || nx >= CHUNK_SIZE || ny < 0 || ny >= CHUNK_SIZE ||
-            nz < 0 || nz >= CHUNK_SIZE) {
-            xvec3i64_t neighbor_chunk_coord = {
-                {local_chunk_coord.nth[0] + dx[i],
-                 local_chunk_coord.nth[1] + dy[i],
-                 local_chunk_coord.nth[2] + dz[i]}};
-
-            for (int j = 0; j < 3; j++) {
-                if (neighbor_chunk_coord.nth[j] < 0 ||
-                    neighbor_chunk_coord.nth[j] >= LOADED_CHUNKS_LEN)
-                    goto skip_neighbor;
-            }
-
-            size_t nidx = local_chunk_coord_to_index(&neighbor_chunk_coord);
-
-            chunk_t *neighbor = world->loaded_chunks[nidx];
-            if (neighbor)
-                neighbor->dirty = true;
-
-        skip_neighbor:;
-        }
-    }
-
-    if (old_block == BLOCK_AIR || block == BLOCK_AIR) {
-        chunk->dirty = true;
     }
 }

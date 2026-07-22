@@ -1,25 +1,27 @@
-#include <minecraft/gl.h>
+#include "client/opengl.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-#include <x/arr.h>
-
 static GLuint compile_shader(GLenum type, const char *src) {
-    GLuint shader = glCreateShader(type);
+    GLuint shader;
+    GLint ok;
+
+    assert(src);
+
+    shader = glCreateShader(type);
     glShaderSource(shader, 1, &src, NULL);
     glCompileShader(shader);
 
-    GLint ok;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
 
     if (!ok) {
         GLchar log[512];
         GLsizei len;
         glGetShaderInfoLog(shader, sizeof log, &len, log);
-        printf("%s\n", log);
+        printf("%s\r\n", log);
         exit(EXIT_FAILURE);
     }
 
@@ -27,38 +29,50 @@ static GLuint compile_shader(GLenum type, const char *src) {
 }
 
 static GLuint load_shader(GLenum type, const char *path) {
-    FILE *file = fopen(path, "rb");
+    size_t len;
+    char *src;
+    GLuint shader;
+    FILE *file;
+
+    assert(path);
+
+    file = fopen(path, "rb");
 
     if (!file) {
-        printf("Failed to open %s\n", path);
+        printf("Failed to open %s\r\n", path);
         exit(EXIT_FAILURE);
     }
 
     fseek(file, 0, SEEK_END);
-    size_t len = (size_t)ftell(file);
+    len = (size_t)ftell(file);
     rewind(file);
 
-    xarr(char) src;
-    xarr_new_n(src, len);
+    src = malloc(len + 1);
 
     fread(src, 1, len, file);
     fclose(file);
 
-    static char nt = '\0';
-    xarr_append(src, nt);
+    src[len] = '\0';
 
-    GLuint shader = compile_shader(type, src);
+    shader = compile_shader(type, src);
 
-    xarr_free(src);
+    free(src);
 
     return shader;
 }
 
-GLuint shader_program_new(const char *vs_path, const char *fs_path) {
-    GLuint vertex_shader    = load_shader(GL_VERTEX_SHADER, vs_path);
-    GLuint fragmanet_shader = load_shader(GL_FRAGMENT_SHADER, fs_path);
+GLuint opengl_shader_program(const char *vs_path, const char *fs_path) {
+    GLuint vertex_shader;
+    GLuint fragmanet_shader;
+    GLuint program;
 
-    GLuint program = glCreateProgram();
+    assert(vs_path);
+    assert(fs_path);
+
+    vertex_shader    = load_shader(GL_VERTEX_SHADER, vs_path);
+    fragmanet_shader = load_shader(GL_FRAGMENT_SHADER, fs_path);
+
+    program = glCreateProgram();
     glAttachShader(program, vertex_shader);
     glAttachShader(program, fragmanet_shader);
     glLinkProgram(program);
@@ -69,12 +83,19 @@ GLuint shader_program_new(const char *vs_path, const char *fs_path) {
     return program;
 }
 
-void APIENTRY opengl_debug_cb(GLenum src, GLenum type, GLuint id, GLenum sev,
-                              GLsizei len, const GLchar *msg,
-                              const void *ctx) {
+void APIENTRY opengl_debug_callback(GLenum src, GLenum type, GLuint id,
+                                    GLenum sev, GLsizei len, const GLchar *msg,
+                                    const void *ctx) {
     const char *src_str;
     const char *type_str;
     const char *sev_str;
+
+    (void)id;
+    (void)len;
+    (void)msg;
+    (void)ctx;
+
+    assert(msg);
 
     switch (src) {
         case GL_DEBUG_SOURCE_API:
@@ -152,5 +173,5 @@ void APIENTRY opengl_debug_cb(GLenum src, GLenum type, GLuint id, GLenum sev,
             break;
     }
 
-    printf("OpenGL:%s:%s:%s: %s\n", src_str, type_str, sev_str, msg);
+    printf("OpenGL:%s:%s:%s: %s\r\n", src_str, type_str, sev_str, msg);
 }

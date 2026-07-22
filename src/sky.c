@@ -1,13 +1,13 @@
-#include <minecraft/sky.h>
+#include "client/sky.h"
 
-#include <x/mat.h>
+#include "matrix.h"
 
-static const float vertices[] = {-1.f, 1.f, -1.f, -1.f, 1.f, -1.f,
-                                 -1.f, 1.f, 1.f,  -1.f, 1.f, 1.f};
+static const float vertices[] = {-1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
+                                 -1.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 1.0f};
 
-void sky_new(sky_t *sky) {
+void sky_init(sky_t *sky) {
     sky->shader_program =
-        shader_program_new("res/sky_vs.glsl", "res/sky_fs.glsl");
+        opengl_shader_program("res/sky_vs.glsl", "res/sky_fs.glsl");
 
     sky->uniform_loc.inv_view_matrix =
         glGetUniformLocation(sky->shader_program, "invView");
@@ -25,14 +25,15 @@ void sky_new(sky_t *sky) {
 }
 
 void sky_draw(sky_t *sky, camera_t *camera) {
+    mat4x4_t inv_view_matrix;
+
     glDepthMask(GL_FALSE);
 
     glUseProgram(sky->shader_program);
 
-    xmat4f32_t inv_view_matrix;
-    xmat4_invert_view_f32(camera->view_matrix, inv_view_matrix);
+    inv_view_matrix = invert_view(&camera->view_matrix);
     glUniformMatrix4fv(sky->uniform_loc.inv_view_matrix, 1, GL_FALSE,
-                       (const GLfloat *)inv_view_matrix.nth);
+                       (const GLfloat *)inv_view_matrix.elems);
 
     glBindVertexArray(sky->vertex_array);
     glDrawArrays(GL_TRIANGLES, 0, 6);

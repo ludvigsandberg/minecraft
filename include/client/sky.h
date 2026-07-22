@@ -3,8 +3,8 @@
 
 #include <glad/glad.h>
 
-#include <minecraft/gl.h>
-#include <minecraft/camera.h>
+#include "client/opengl.h"
+#include "client/camera.h"
 
 typedef struct {
     GLuint shader_program;
@@ -16,7 +16,7 @@ typedef struct {
     } uniform_loc;
 } sky_t;
 
-void sky_new(sky_t *sky);
+void sky_init(sky_t *sky);
 void sky_draw(sky_t *sky, camera_t *camera);
 
 #endif
