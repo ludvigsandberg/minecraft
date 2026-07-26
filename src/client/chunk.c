@@ -99,6 +99,12 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                 switch (block) {
                     case BLOCK_STONE:
                         uv_offset.VEC_U = 16.0f / 256.0f;
+                        break;
+
+                    case BLOCK_BEDROCK:
+                        uv_offset.VEC_U = 16.0f / 256.0f;
+                        uv_offset.VEC_V = 16.0f / 256.0f;
+                        break;
                 }
 
                 /* For each face. */
@@ -145,9 +151,12 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                             p = (size_t)face_idx * 12 + (size_t)i * 3;
                             t = (size_t)face_idx * 8 + (size_t)i * 2;
 
-                            vertex[0] = cube_positions[p + 0] + (float)x;
-                            vertex[1] = cube_positions[p + 1] + (float)y;
-                            vertex[2] = cube_positions[p + 2] + (float)z;
+                            vertex[0] = (float)(chunk->coord.x * CHUNK_SIZE) +
+                                        cube_positions[p + 0] + (float)x;
+                            vertex[1] = (float)(chunk->coord.y * CHUNK_SIZE) +
+                                        cube_positions[p + 1] + (float)y;
+                            vertex[2] = (float)(chunk->coord.z * CHUNK_SIZE) +
+                                        cube_positions[p + 2] + (float)z;
                             vertex[3] =
                                 cube_uvs[t + 0] / 16.0f + uv_offset.VEC_U;
                             vertex[4] =
@@ -194,7 +203,7 @@ void chunk_init(chunk_t *chunk, const unsigned char *blocks,
 
     /* Init. */
 
-    chunk->dirty = true;
+    chunk->dirty = TRUE;
 
     memcpy(chunk->blocks, blocks, CHUNK_TOTAL * sizeof(*blocks));
     chunk->coord = *coord;

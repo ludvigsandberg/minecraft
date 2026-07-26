@@ -39,17 +39,16 @@ target_include_directories(glad PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad/include)
 
 add_executable(client 
-    src/client_main.c
-    src/camera.c
-    src/chunk.c
-    src/opengl.c
-    src/gui.c
-    src/sky.c
-    src/world.c
-    src/file_io.c
-    src/system.c
     src/vector.c
-    src/matrix.c)
+    src/matrix.c
+    src/client/main.c
+    src/client/camera.c
+    src/client/chunk.c
+    src/client/opengl.c
+    src/client/gui.c
+    src/client/world.c
+    src/client/renderer.c
+    src/client/system.c)
 
 target_include_directories(client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(client PRIVATE glad m X11 GL)
@@ -60,9 +59,9 @@ target_compile_options(client PRIVATE ${FLAGS})
 ###############################################################################
 
 add_executable(server 
-    src/server_main.c
     src/vector.c
-    src/matrix.c)
+    src/matrix.c
+    src/server/main.c)
 
 target_include_directories(server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(server PRIVATE m)

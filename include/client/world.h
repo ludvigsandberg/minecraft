@@ -6,6 +6,7 @@
 #include "coord.h"
 #include "client/opengl.h"
 #include "client/chunk.h"
+#include "client/renderer.h"
 #include "client/camera.h"
 
 #define RENDER_DISTANCE   4
@@ -31,22 +32,10 @@ typedef struct world_s {
     chunk_result_t **result_queue;
     size_t result_queue_count;
     size_t result_queue_cap;
-
-    GLuint shader_program;
-    GLuint terrain_texture;
-    GLuint player_texture;
-
-    struct {
-        GLint texture;
-        GLint model_matrix;
-        GLint view_matrix;
-        GLint projection_matrix;
-        GLint camera_pos;
-    } uniform_loc;
 } world_t;
 
 void world_init(world_t *world);
 void world_update(world_t *world, const camera_t *cam);
-void world_draw(world_t *world, camera_t *camera);
+void world_draw(world_t *world, const renderer_t *renderer, camera_t *camera);
 
 #endif

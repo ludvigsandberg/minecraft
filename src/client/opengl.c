@@ -83,6 +83,55 @@ GLuint opengl_shader_program(const char *vs_path, const char *fs_path) {
     return program;
 }
 
+GLuint opengl_texture(const unsigned char *texture_data, int width,
+                      int height) {
+    GLuint handle;
+
+    assert(texture_data);
+
+    glGenTextures(1, &handle);
+    glBindTexture(GL_TEXTURE_2D, handle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, texture_data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    return handle;
+}
+
+GLuint opengl_texture_raw(const char *path, int width, int height) {
+    size_t size;
+    FILE *file;
+    unsigned char *texture_data;
+    size_t bytes_read;
+    GLuint handle;
+
+    size = (size_t)(width * height * 4);
+
+    file = fopen(path, "rb");
+
+    if (!file) {
+        printf("Failed to open %s\r\n", path);
+        exit(EXIT_FAILURE);
+    }
+
+    texture_data = malloc(size);
+
+    bytes_read = fread(texture_data, 1, size, file);
+
+    if (bytes_read != size) {
+        printf("Invalid file size: %s\r\n", path);
+        exit(EXIT_FAILURE);
+    }
+
+    handle = opengl_texture(texture_data, width, height);
+
+    free(texture_data);
+
+    return handle;
+}
+
 void APIENTRY opengl_debug_callback(GLenum src, GLenum type, GLuint id,
                                     GLenum sev, GLsizei len, const GLchar *msg,
                                     const void *ctx) {

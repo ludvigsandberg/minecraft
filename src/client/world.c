@@ -10,8 +10,7 @@
 #include "macros.h"
 #include "array.h"
 #include "client/chunk.h"
-#include "client/opengl.h"
-#include "client/file_io.h"
+#include "client/renderer.h"
 
 static float noise3d(float x, float y, float z) {
     int xi, yi, zi;
@@ -97,11 +96,11 @@ static void generate(unsigned char *blocks, const chunk_coord_t *coord) {
                     if (n > 0.2f) {
                         *block = BLOCK_AIR;
                     } else {
-                        *block = BLOCK_STONE;
+                        *block = BLOCK_BEDROCK;
                     }
                 } else {
-                    if (n > 0.3f) {
-                        *block = (n > 0.31f) ? BLOCK_STONE : BLOCK_GRASS;
+                    if (n > 0.28f) {
+                        *block = (n > 0.29f) ? BLOCK_STONE : BLOCK_GRASS;
                     } else {
                         *block = BLOCK_AIR;
                     }
@@ -219,47 +218,6 @@ static void load_chunk(world_t *world, const chunk_coord_t *coord) {
 void world_init(world_t *world) {
     chunk_coord_t coord;
 
-    struct {
-        unsigned char *data;
-        int width;
-        int height;
-    } atlas;
-
-    /* Load shaders. */
-
-    world->shader_program =
-        opengl_shader_program("res/chunk_vs.glsl", "res/chunk_fs.glsl");
-
-    world->uniform_loc.texture =
-        glGetUniformLocation(world->shader_program, "atlas");
-    world->uniform_loc.model_matrix =
-        glGetUniformLocation(world->shader_program, "model");
-    world->uniform_loc.view_matrix =
-        glGetUniformLocation(world->shader_program, "view");
-    world->uniform_loc.projection_matrix =
-        glGetUniformLocation(world->shader_program, "projection");
-    world->uniform_loc.camera_pos =
-        glGetUniformLocation(world->shader_program, "cameraPos");
-
-    /* Load atlas. */
-
-    atlas.data = load_bmp("res/terrain.bmp", &atlas.width, &atlas.height);
-
-    if (!atlas.data) {
-        printf("Failed to open %s\r\n", "res/terrain.bmp");
-        exit(EXIT_FAILURE);
-    }
-
-    glGenTextures(1, &world->terrain_texture);
-    glBindTexture(GL_TEXTURE_2D, world->terrain_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 256, 256, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, atlas.data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    free(atlas.data);
-
     /* Setup chunk loading threads. */
 
     world->job_queue          = NULL;
@@ -271,7 +229,7 @@ void world_init(world_t *world) {
 
     pthread_mutex_init(&world->mutex, NULL);
     pthread_cond_init(&world->cond, NULL);
-    world->is_running = true;
+    world->is_running = TRUE;
     pthread_create(&world->thread, NULL, chunk_load_thread, world);
 
     /* Load chunks. */
@@ -368,8 +326,8 @@ void world_update(world_t *world, const camera_t *cam) {
                 for (z = 0; z < LOADED_CHUNKS_LEN; z++) {
                     chunk_coord_t coord;
                     chunk_coord_t old_coord;
-                    int delete   = false;
-                    int can_copy = true;
+                    int delete   = FALSE;
+                    int can_copy = TRUE;
 
                     coord.x = x;
                     coord.y = y;
@@ -387,7 +345,7 @@ void world_update(world_t *world, const camera_t *cam) {
                         coord.y >= diff.y + LOADED_CHUNKS_LEN ||
                         coord.z < diff.z ||
                         coord.z >= diff.z + LOADED_CHUNKS_LEN) {
-                        delete = true;
+                        delete = TRUE;
                     }
 
                     if (delete) {
@@ -404,7 +362,7 @@ void world_update(world_t *world, const camera_t *cam) {
 
                             if (world_is_chunk_loaded(world, &below_coord,
                                                       &below_chunk)) {
-                                below_chunk->dirty = true;
+                                below_chunk->dirty = TRUE;
                             }
 
                             /* Free. */
@@ -419,7 +377,7 @@ void world_update(world_t *world, const camera_t *cam) {
                     if (old_coord.x < 0 || old_coord.x >= LOADED_CHUNKS_LEN ||
                         old_coord.y < 0 || old_coord.y >= LOADED_CHUNKS_LEN ||
                         old_coord.z < 0 || old_coord.z >= LOADED_CHUNKS_LEN) {
-                        can_copy = false;
+                        can_copy = FALSE;
                     }
 
                     /* Copy chunk. */
@@ -460,65 +418,12 @@ void world_update(world_t *world, const camera_t *cam) {
     }
 }
 
-void world_draw(world_t *world, camera_t *camera) {
-    int x;
-    int y;
-    int z;
+void world_draw(world_t *world, const renderer_t *renderer, camera_t *camera) {
+    int i;
 
-    glUseProgram(world->shader_program);
-
-    glUniform1i(world->uniform_loc.texture, 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, world->terrain_texture);
-
-    glUniform3fv(world->uniform_loc.camera_pos, 1,
-                 (const GLfloat *)camera->pos.elems);
-
-    /* For each chunk. */
-    for (x = 0; x < LOADED_CHUNKS_LEN; x++) {
-        for (y = 0; y < LOADED_CHUNKS_LEN; y++) {
-            for (z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                chunk_coord_t world_coord;
-                chunk_t *chunk;
-                mat4x4_t model = MAT4X4_IDENTITY;
-                vec3_t translation;
-                mat4x4_t model2;
-
-                /* Translate to world coordinates. */
-
-                world_coord.x = x + world->center.x - RENDER_DISTANCE;
-                world_coord.y = y + world->center.y - RENDER_DISTANCE;
-                world_coord.z = z + world->center.z - RENDER_DISTANCE;
-
-                chunk = world->loaded_chunks[chunk_coord_to_index(
-                    &world_coord, &world->center)];
-
-                /* Skip if not loaded. */
-                if (!chunk) {
-                    continue;
-                }
-
-                translation.VEC_X = (float)(world_coord.x * CHUNK_SIZE);
-                translation.VEC_Y = (float)(world_coord.y * CHUNK_SIZE);
-                translation.VEC_Z = (float)(world_coord.z * CHUNK_SIZE);
-
-                model2 = mat4x4_translate(&model, &translation);
-
-                glUniformMatrix4fv(world->uniform_loc.model_matrix, 1,
-                                   GL_FALSE, (const GLfloat *)model2.elems);
-                glUniformMatrix4fv(world->uniform_loc.view_matrix, 1, GL_FALSE,
-                                   (const GLfloat *)camera->view_matrix.elems);
-                glUniformMatrix4fv(
-                    world->uniform_loc.projection_matrix, 1, GL_FALSE,
-                    (const GLfloat *)camera->viewport.projection_matrix.elems);
-
-                /* Draw. */
-
-                glBindVertexArray(chunk->vertex_array);
-
-                glDrawElements(GL_TRIANGLES, (GLsizei)chunk->index_count,
-                               GL_UNSIGNED_INT, 0);
-            }
+    for (i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
+        if (world->loaded_chunks[i]) {
+            renderer_draw_chunk(renderer, world->loaded_chunks[i], camera);
         }
     }
 }

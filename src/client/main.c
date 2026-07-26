@@ -13,18 +13,18 @@
 
 #include "macros.h"
 #include "client/system.h"
+#include "client/renderer.h"
 #include "client/opengl.h"
 #include "client/chunk.h"
 #include "client/world.h"
-#include "client/sky.h"
 #include "client/camera.h"
 #include "client/gui.h"
 
 int main(int argc, char **argv) {
     window_t window;
+    renderer_t renderer;
     camera_t camera;
     world_t world;
-    sky_t sky;
     gui_t gui;
     double last_time;
 
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 
     camera_init(&camera);
     world_init(&world);
-    sky_init(&sky);
+    renderer_init(&renderer);
     gui_init(&gui);
 
     last_time = elapsed_time_seconds();
@@ -56,9 +56,9 @@ int main(int argc, char **argv) {
     while (TRUE) {
         double current_time;
         float delta_time;
-        int vertical = 16;
-        /*vec3_t player_pos = {{4.0f, 0.0f, 4.0f}};
-        vec3_t player_vel = {{0.5f, 0.0f, 0.5f}};*/
+        int vertical      = 16;
+        vec3_t player_pos = {{4.0f, 0.0f, 4.0f}};
+        vec3_t player_vel = {{0.5f, 0.0f, 0.5f}};
 
         /* Update. */
 
@@ -81,9 +81,12 @@ int main(int argc, char **argv) {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        sky_draw(&sky, &camera);
+        renderer_draw_sky(&renderer, &camera);
 
-        world_draw(&world, &camera);
+        world_draw(&world, &renderer, &camera);
+
+        renderer_draw_player(&renderer, &player_pos, &player_vel, 0.0f, 90.0f,
+                             &camera);
 
         gui_text(&gui, 10, 10, "Minecraft");
         gui_text(&gui, 10, 10 + vertical, "Frame %.1fms",
@@ -101,8 +104,6 @@ int main(int argc, char **argv) {
                  (double)camera.pitch);
 
         gui_flush(&gui, &camera);
-
-        /*player_draw(&player_pos, 45.0f, &player_vel, delta_time, &camera);*/
 
         glXSwapBuffers(window.display, window.handle);
     }

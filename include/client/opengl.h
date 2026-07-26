@@ -5,6 +5,12 @@
 
 GLuint opengl_shader_program(const char *vs_path, const char *fs_path);
 
+GLuint opengl_texture(const unsigned char *texture_data, int width,
+                      int height);
+
+/* Load 32-bit RGBA raw texture data from disk (.raw).  */
+GLuint opengl_texture_raw(const char *path, int width, int height);
+
 void APIENTRY opengl_debug_callback(GLenum src, GLenum type, GLuint id,
                                     GLenum sev, GLsizei len, const GLchar *msg,
                                     const void *ctx);

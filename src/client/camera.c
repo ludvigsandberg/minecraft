@@ -50,7 +50,7 @@ void camera_update(camera_t *camera, const window_t *window,
     assert(camera);
     assert(window);
 
-    speed = 20.0f * delta_time;
+    speed = 40.0f * delta_time;
 
     yaw_rad   = camera->yaw * (float)PI / 180.0f;
     pitch_rad = camera->pitch * (float)PI / 180.0f;
@@ -90,7 +90,7 @@ void camera_update(camera_t *camera, const window_t *window,
         camera->pos.VEC_Y -= speed;
     }
 
-    look_speed = 95.0f * delta_time;
+    look_speed = 400.0f * delta_time;
 
     if (window_is_key_pressed(window, XK_Left)) {
         camera->yaw += look_speed;

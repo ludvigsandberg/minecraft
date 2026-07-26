@@ -141,7 +141,7 @@ void window_init(window_t *window) {
     XSync(window->display, False);
 
     if (!context) {
-        printf("Failed to create OpenGL 4.6 context.\r\n");
+        printf("Failed to create OpenGL 3.3 context.\r\n");
         exit(EXIT_FAILURE);
     }
 

@@ -7,7 +7,6 @@
 #include <assert.h>
 
 #include "client/opengl.h"
-#include "client/file_io.h"
 
 #define GLYPH_PIXELS 12
 
@@ -39,30 +38,9 @@ static const int glyph_widths[256] = {
 };
 
 void gui_init(gui_t *gui) {
-    unsigned char *data;
-    int x = 0;
-    int y = 0;
-
     assert(gui);
 
-    gui->glyph_count = 0;
-
-    /* Load charset. */
-
-    data = load_bmp("res/charset.bmp", &x, &y);
-
-    if (!data) {
-        printf("Failed to load %s\r\n", "res/charset.bmp");
-        exit(EXIT_FAILURE);
-    }
-
-    glGenTextures(1, &gui->charset_texture);
-    glBindTexture(GL_TEXTURE_2D, gui->charset_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 128, 128, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glGenerateMipmap(GL_TEXTURE_2D);
+    gui->charset_texture = opengl_texture_raw("res/default.raw", 128, 128);
 
     /* Load shaders. */
 

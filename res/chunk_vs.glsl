@@ -1,4 +1,4 @@
-#version 450 core
+#version 330 core
 
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec2 aTex;
@@ -10,19 +10,13 @@ out vec3 vWorldPos;
 out float vShadow;
 out float vLight;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+uniform mat4 mvp;
 
 void main() {
     vTex = aTex;
-
-    vec4 worldPos = model * vec4(aPos, 1.0);
-
-    vWorldPos = worldPos.xyz;
-
+    vWorldPos = aPos;
     vShadow = aShadow;
     vLight = aLight;
 
-    gl_Position = projection * view * worldPos;
+    gl_Position = mvp * vec4(aPos, 1.0);
 }

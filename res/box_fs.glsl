@@ -2,8 +2,6 @@
 
 in vec2 vTex;
 in vec3 vWorldPos;
-in float vShadow;
-in float vLight;
 
 out vec4 FragColor;
 
@@ -37,6 +35,6 @@ void main() {
         fogColor = mix(horizonColor, bottomColor, t);
     }
 
-    vec3 color = mix(fogColor, baseColor.rgb * vShadow * (vLight / 15.0), fogFactor);
+    vec3 color = mix(fogColor, baseColor.rgb, fogFactor);
     FragColor = vec4(color, baseColor.a);
 }
