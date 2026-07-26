@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <X11/Xutil.h>
 
@@ -52,7 +53,7 @@ static const int context_attribs[] = {GLX_CONTEXT_MAJOR_VERSION_ARB,
                                       GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
                                       None};
 
-static char keys[32];
+static char key_state[256] = {0};
 
 double elapsed_time_seconds(void) {
     static clock_t start   = 0;
@@ -154,13 +155,38 @@ void window_init(window_t *window) {
 }
 
 void window_update(window_t *window) {
-    XQueryKeymap(window->display, keys);
+    XEvent event;
+
+    while (XPending(window->display) > 0) {
+        XNextEvent(window->display, &event);
+
+        switch (event.type) {
+            case KeyPress:
+                key_state[event.xkey.keycode] = 1;
+                break;
+
+            case KeyRelease:
+                if (XPending(window->display) > 0) {
+                    XEvent next_event;
+                    XPeekEvent(window->display, &next_event);
+
+                    if (next_event.type == KeyPress &&
+                        next_event.xkey.keycode == event.xkey.keycode &&
+                        next_event.xkey.time == event.xkey.time) {
+                        break;
+                    }
+                }
+                key_state[event.xkey.keycode] = 0;
+                break;
+        }
+    }
 }
 
 int window_is_key_pressed(const window_t *window, KeySym keysym) {
     KeyCode code = XKeysymToKeycode(window->display, keysym);
-    if (code == NoSymbol) {
+
+    if (!code) {
         return FALSE;
     }
-    return (keys[code / 8] & (1 << (code % 8))) != 0;
+    return key_state[code];
 }

@@ -203,6 +203,10 @@ static const float player_left_leg_uvs[48] = {
     PLAYER_UV(8.0f, 16.0f, -4.0f, 4.0f),
     PLAYER_UV(12.0f, 16.0f, -4.0f, 4.0f)};
 
+#ifndef DEG2RAD
+#define DEG2RAD(deg) ((deg) * (3.14159265358979323846f / 180.0f))
+#endif
+
 void renderer_draw_player(const renderer_t *renderer, const vec3_t *position,
                           const vec3_t *velocity, float head_yaw,
                           float head_pitch, const camera_t *camera) {
@@ -240,6 +244,7 @@ void renderer_draw_player(const renderer_t *renderer, const vec3_t *position,
     float speed;
     float walk_phase;
     float swing_angle;
+    float is_moving;
 
     assert(renderer);
     assert(position);
@@ -258,22 +263,18 @@ void renderer_draw_player(const renderer_t *renderer, const vec3_t *position,
     speed = (float)sqrt((double)velocity->VEC_X * (double)velocity->VEC_X +
                         (double)velocity->VEC_Z * (double)velocity->VEC_Z);
 
-    if (speed > 0.001f) {
+    if (speed > 0.01f) {
         body_yaw =
             (float)atan2((double)-velocity->VEC_X, (double)-velocity->VEC_Z);
+        is_moving = 1.0f;
     } else {
-        body_yaw = head_yaw;
+        body_yaw  = DEG2RAD(head_yaw);
+        is_moving = 0.0f;
     }
 
-    walk_phase  = (float)fmod(elapsed_time_seconds() * 8.0,
-                              2.0 * 3.14159265358979323846);
-    swing_angle = (float)sin((double)walk_phase) * speed * 0.8f;
-    if (swing_angle > 1.0f) {
-        swing_angle = 1.0f;
-    }
-    if (swing_angle < -1.0f) {
-        swing_angle = -1.0f;
-    }
+    /* Animate limb swing based on elapsed time when player is moving */
+    walk_phase  = (float)(elapsed_time_seconds() * 100.0);
+    swing_angle = (float)sin((double)walk_phase) * 0.6662f * is_moving;
 
     head_scale.VEC_X = 0.5f;
     head_scale.VEC_Y = 0.5f;
@@ -329,8 +330,8 @@ void renderer_draw_player(const renderer_t *renderer, const vec3_t *position,
 
     body_rot = mat4x4_rotate_y(&body_rot, body_yaw);
 
-    head_rot = mat4x4_rotate_y(&head_rot, head_yaw);
-    head_rot = mat4x4_rotate_x(&head_rot, head_pitch);
+    head_rot = mat4x4_rotate_y(&head_rot, DEG2RAD(head_yaw));
+    head_rot = mat4x4_rotate_x(&head_rot, DEG2RAD(head_pitch));
 
     right_arm_rot = mat4x4_translate(&right_arm_rot, &pivot_top);
     right_arm_rot = mat4x4_rotate_x(&right_arm_rot, -swing_angle);

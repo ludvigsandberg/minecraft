@@ -40,6 +40,8 @@ static const int glyph_widths[256] = {
 void gui_init(gui_t *gui) {
     assert(gui);
 
+    gui->glyph_count = 0;
+
     gui->charset_texture = opengl_texture_raw("res/default.raw", 128, 128);
 
     /* Load shaders. */
