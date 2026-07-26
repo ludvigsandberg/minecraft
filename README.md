@@ -1,14 +1,15 @@
 # Minecraft
 
-Minecraft in C89/OpenGL
+Multiplayer minecraft in C89/OpenGL
 
-![Screenshot 1](docs/minecraft%202026-01-18%2010_56_48.png)
-![Screenshot 2](docs/Screenshot%202026-07-18%20152955.png)
+![Video screenshot](docs/Screenshot%202026-07-26%20171316.png)
+![Screenshot](docs/minecraft%202026-01-18%2010_56_48.png)
+![Screenshot](docs/Screenshot%202026-07-18%20152955.png)
 
 ## Features
 
 - Infinite terrain generation
-- Multiplayer (WIP)
+- Multiplayer
 
 ## Dependencies
 
