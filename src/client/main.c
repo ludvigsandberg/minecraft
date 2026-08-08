@@ -27,11 +27,6 @@
 #include "client/camera.h"
 #include "client/gui.h"
 
-/*#define MULTIPLAYER*/
-
-#define PORT 2000
-
-#ifdef MULTIPLAYER
 #pragma pack(push, 1)
 typedef struct client_update_pkt_s {
     int sender_socket;
@@ -65,9 +60,12 @@ static int set_nonblocking(int socket) {
 
     return TRUE;
 }
-#endif
 
 int main(int argc, char **argv) {
+    int multiplayer = FALSE;
+    char *host;
+    int port;
+
     window_t window;
     renderer_t renderer;
     camera_t camera;
@@ -75,7 +73,6 @@ int main(int argc, char **argv) {
     gui_t gui;
     double last_time;
 
-#ifdef MULTIPLAYER
     int server_socket;
     struct sockaddr_in server_addr;
 
@@ -88,33 +85,43 @@ int main(int argc, char **argv) {
     size_t remote_player_cap        = 0;
 
     vec3_t last_pos;
-#endif
 
-    (void)argc;
-    (void)argv;
-
-#ifdef MULTIPLAYER
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_socket == -1) {
-        printf("Failed to create socket.\r\n");
-        exit(EXIT_FAILURE);
+    /* Parse server hostname and port. */
+    if (argc >= 3) {
+        host        = argv[1];
+        port        = atoi(argv[2]);
+        multiplayer = TRUE;
     }
 
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port   = htons(PORT);
-    inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
+    if (multiplayer) {
+        server_socket = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_socket == -1) {
+            printf("Failed to create socket.\r\n");
+            exit(EXIT_FAILURE);
+        }
 
-    if (connect(server_socket, (struct sockaddr *)&server_addr,
-                sizeof(server_addr)) == -1) {
-        printf("Failed to connect to server.\r\n");
-        exit(EXIT_FAILURE);
-    }
+        printf("Connecting to %s:%d...\r\n", host, port);
 
-    if (!set_nonblocking(server_socket)) {
-        printf("Failed to set socket to non-blocking.\r\n");
-        exit(EXIT_FAILURE);
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port   = htons((unsigned short)port);
+        inet_pton(AF_INET, host, &server_addr.sin_addr);
+
+        if (connect(server_socket, (struct sockaddr *)&server_addr,
+                    sizeof(server_addr)) == -1) {
+            printf("Failed to connect to server.\r\n");
+            exit(EXIT_FAILURE);
+        }
+
+        if (!set_nonblocking(server_socket)) {
+            printf("Failed to set socket to non-blocking.\r\n");
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        printf("Launching in singleplayer mode.\r\n");
+        printf("To connect to a server, start the client with the server "
+               "address and port.\r\n");
+        printf("Example: ./client <address> <port>\r\n");
     }
-#endif
 
     window_init(&window);
 
@@ -136,62 +143,60 @@ int main(int argc, char **argv) {
     renderer_init(&renderer);
     gui_init(&gui);
 
-#ifdef MULTIPLAYER
-    last_pos = camera.pos;
-#endif
+    last_pos  = camera.pos;
     last_time = elapsed_time_seconds();
 
     while (TRUE) {
         double current_time;
         float delta_time;
         int vertical = 16;
-#ifdef MULTIPLAYER
         char recv_buf[1024];
         ssize_t bytes_received;
         size_t i;
-#endif
 
         /* Network Receive */
 
-#ifdef MULTIPLAYER
-        bytes_received = recv(server_socket, recv_buf, sizeof(recv_buf), 0);
-        if (bytes_received > 0) {
-            ARR_APPEND_N(in_buf, in_count, in_cap, (size_t)bytes_received,
-                         recv_buf);
+        if (multiplayer) {
+            bytes_received =
+                recv(server_socket, recv_buf, sizeof(recv_buf), 0);
+            if (bytes_received > 0) {
+                ARR_APPEND_N(in_buf, in_count, in_cap, (size_t)bytes_received,
+                             recv_buf);
 
-            while (in_count >= sizeof(client_update_pkt_t)) {
-                client_update_pkt_t pkt;
-                int found = FALSE;
+                while (in_count >= sizeof(client_update_pkt_t)) {
+                    client_update_pkt_t pkt;
+                    int found = FALSE;
 
-                memcpy(&pkt, in_buf, sizeof(client_update_pkt_t));
+                    memcpy(&pkt, in_buf, sizeof(client_update_pkt_t));
 
-                for (i = 0; i < remote_player_count; i++) {
-                    if (remote_players[i].socket == pkt.sender_socket) {
-                        remote_players[i].position   = pkt.position;
-                        remote_players[i].velocity   = pkt.velocity;
-                        remote_players[i].head_yaw   = pkt.head_yaw;
-                        remote_players[i].head_pitch = pkt.head_pitch;
+                    for (i = 0; i < remote_player_count; i++) {
+                        if (remote_players[i].socket == pkt.sender_socket) {
+                            remote_players[i].position   = pkt.position;
+                            remote_players[i].velocity   = pkt.velocity;
+                            remote_players[i].head_yaw   = pkt.head_yaw;
+                            remote_players[i].head_pitch = pkt.head_pitch;
 
-                        found = TRUE;
-                        break;
+                            found = TRUE;
+                            break;
+                        }
                     }
-                }
 
-                if (!found) {
-                    remote_player_t rp;
-                    rp.socket     = pkt.sender_socket;
-                    rp.position   = pkt.position;
-                    rp.velocity   = pkt.velocity;
-                    rp.head_yaw   = pkt.head_yaw;
-                    rp.head_pitch = pkt.head_pitch;
-                    ARR_APPEND(remote_players, remote_player_count,
-                               remote_player_cap, &rp);
-                }
+                    if (!found) {
+                        remote_player_t rp;
+                        rp.socket     = pkt.sender_socket;
+                        rp.position   = pkt.position;
+                        rp.velocity   = pkt.velocity;
+                        rp.head_yaw   = pkt.head_yaw;
+                        rp.head_pitch = pkt.head_pitch;
+                        ARR_APPEND(remote_players, remote_player_count,
+                                   remote_player_cap, &rp);
+                    }
 
-                ARR_REMOVE_N(in_buf, in_count, 0, sizeof(client_update_pkt_t));
+                    ARR_REMOVE_N(in_buf, in_count, 0,
+                                 sizeof(client_update_pkt_t));
+                }
             }
         }
-#endif
 
         /* Update. */
 
@@ -206,27 +211,26 @@ int main(int argc, char **argv) {
         world_update(&world, &camera);
 
         /* Network Send */
+        if (multiplayer) {
+            if (delta_time > 0.0f) {
+                client_update_pkt_t pkt;
 
-#ifdef MULTIPLAYER
-        if (delta_time > 0.0f) {
-            client_update_pkt_t pkt;
+                pkt.sender_socket = -1;
+                pkt.position      = camera.pos;
+                pkt.velocity.VEC_X =
+                    (camera.pos.VEC_X - last_pos.VEC_X) / delta_time;
+                pkt.velocity.VEC_Y =
+                    (camera.pos.VEC_Y - last_pos.VEC_Y) / delta_time;
+                pkt.velocity.VEC_Z =
+                    (camera.pos.VEC_Z - last_pos.VEC_Z) / delta_time;
+                pkt.head_yaw   = camera.yaw;
+                pkt.head_pitch = camera.pitch;
 
-            pkt.sender_socket = -1;
-            pkt.position      = camera.pos;
-            pkt.velocity.VEC_X =
-                (camera.pos.VEC_X - last_pos.VEC_X) / delta_time;
-            pkt.velocity.VEC_Y =
-                (camera.pos.VEC_Y - last_pos.VEC_Y) / delta_time;
-            pkt.velocity.VEC_Z =
-                (camera.pos.VEC_Z - last_pos.VEC_Z) / delta_time;
-            pkt.head_yaw   = camera.yaw;
-            pkt.head_pitch = camera.pitch;
+                send(server_socket, &pkt, sizeof(client_update_pkt_t), 0);
 
-            send(server_socket, &pkt, sizeof(client_update_pkt_t), 0);
-
-            last_pos = camera.pos;
+                last_pos = camera.pos;
+            }
         }
-#endif
 
         /* Draw. */
 
@@ -236,14 +240,14 @@ int main(int argc, char **argv) {
 
         world_draw(&world, &renderer, &camera);
 
-#ifdef MULTIPLAYER
-        for (i = 0; i < remote_player_count; i++) {
-            renderer_draw_player(&renderer, &remote_players[i].position,
-                                 &remote_players[i].velocity,
-                                 remote_players[i].head_yaw,
-                                 remote_players[i].head_pitch, &camera);
+        if (multiplayer) {
+            for (i = 0; i < remote_player_count; i++) {
+                renderer_draw_player(&renderer, &remote_players[i].position,
+                                     &remote_players[i].velocity,
+                                     remote_players[i].head_yaw,
+                                     remote_players[i].head_pitch, &camera);
+            }
         }
-#endif
 
         gui_text(&gui, 10, 10, "Minecraft");
         gui_text(&gui, 10, 10 + vertical, "Frame %.1fms",

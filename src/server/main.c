@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    printf("Listening on port %d\r\n", PORT);
+    printf("Listening on port %d...\r\n", PORT);
 
     while (TRUE) {
         fd.fd     = listener;
