@@ -27,8 +27,11 @@
 #include "client/camera.h"
 #include "client/gui.h"
 
+/*#define MULTIPLAYER*/
+
 #define PORT 2000
 
+#ifdef MULTIPLAYER
 #pragma pack(push, 1)
 typedef struct client_update_pkt_s {
     int sender_socket;
@@ -62,6 +65,7 @@ static int set_nonblocking(int socket) {
 
     return TRUE;
 }
+#endif
 
 int main(int argc, char **argv) {
     window_t window;
@@ -71,6 +75,7 @@ int main(int argc, char **argv) {
     gui_t gui;
     double last_time;
 
+#ifdef MULTIPLAYER
     int server_socket;
     struct sockaddr_in server_addr;
 
@@ -83,10 +88,12 @@ int main(int argc, char **argv) {
     size_t remote_player_cap        = 0;
 
     vec3_t last_pos;
+#endif
 
     (void)argc;
     (void)argv;
 
+#ifdef MULTIPLAYER
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
         printf("Failed to create socket.\r\n");
@@ -107,6 +114,7 @@ int main(int argc, char **argv) {
         printf("Failed to set socket to non-blocking.\r\n");
         exit(EXIT_FAILURE);
     }
+#endif
 
     window_init(&window);
 
@@ -128,19 +136,24 @@ int main(int argc, char **argv) {
     renderer_init(&renderer);
     gui_init(&gui);
 
-    last_pos  = camera.pos;
+#ifdef MULTIPLAYER
+    last_pos = camera.pos;
+#endif
     last_time = elapsed_time_seconds();
 
     while (TRUE) {
         double current_time;
         float delta_time;
         int vertical = 16;
+#ifdef MULTIPLAYER
         char recv_buf[1024];
         ssize_t bytes_received;
         size_t i;
+#endif
 
         /* Network Receive */
 
+#ifdef MULTIPLAYER
         bytes_received = recv(server_socket, recv_buf, sizeof(recv_buf), 0);
         if (bytes_received > 0) {
             ARR_APPEND_N(in_buf, in_count, in_cap, (size_t)bytes_received,
@@ -158,10 +171,6 @@ int main(int argc, char **argv) {
                         remote_players[i].velocity   = pkt.velocity;
                         remote_players[i].head_yaw   = pkt.head_yaw;
                         remote_players[i].head_pitch = pkt.head_pitch;
-
-                        /* Hack. */
-                        remote_players[i].position.VEC_Y -= 1.8f;
-                        remote_players[i].head_yaw *= -1.0f;
 
                         found = TRUE;
                         break;
@@ -182,6 +191,7 @@ int main(int argc, char **argv) {
                 ARR_REMOVE_N(in_buf, in_count, 0, sizeof(client_update_pkt_t));
             }
         }
+#endif
 
         /* Update. */
 
@@ -197,6 +207,7 @@ int main(int argc, char **argv) {
 
         /* Network Send */
 
+#ifdef MULTIPLAYER
         if (delta_time > 0.0f) {
             client_update_pkt_t pkt;
 
@@ -215,6 +226,7 @@ int main(int argc, char **argv) {
 
             last_pos = camera.pos;
         }
+#endif
 
         /* Draw. */
 
@@ -224,12 +236,14 @@ int main(int argc, char **argv) {
 
         world_draw(&world, &renderer, &camera);
 
+#ifdef MULTIPLAYER
         for (i = 0; i < remote_player_count; i++) {
             renderer_draw_player(&renderer, &remote_players[i].position,
                                  &remote_players[i].velocity,
                                  remote_players[i].head_yaw,
                                  remote_players[i].head_pitch, &camera);
         }
+#endif
 
         gui_text(&gui, 10, 10, "Minecraft");
         gui_text(&gui, 10, 10 + vertical, "Frame %.1fms",

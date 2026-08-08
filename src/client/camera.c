@@ -4,6 +4,8 @@
 #include <math.h>
 #include <assert.h>
 
+#define PLAYER_EYE_HEIGHT 1.62f
+
 #define PI        3.14159265358979323846
 #define PI_2      (PI / 2.0)
 #define MAX_PITCH 89.999f
@@ -46,6 +48,7 @@ void camera_update(camera_t *camera, const window_t *window,
     float look_speed;
     vec3_t center;
     vec3_t up = {{0.0f, 1.0f, 0.0f}};
+    vec3_t eye_pos;
 
     assert(camera);
     assert(window);
@@ -112,6 +115,12 @@ void camera_update(camera_t *camera, const window_t *window,
         camera->pitch = -MAX_PITCH;
     }
 
-    center              = vec3_add(&camera->pos, &forward);
-    camera->view_matrix = look_at(&camera->pos, &center, &up);
+    eye_pos = camera->pos;
+    center  = vec3_add(&camera->pos, &forward);
+
+    /* Apply offset since camera is positioned at player eye height. */
+    eye_pos.VEC_Y += PLAYER_EYE_HEIGHT;
+    center.VEC_Y += PLAYER_EYE_HEIGHT;
+
+    camera->view_matrix = look_at(&eye_pos, &center, &up);
 }

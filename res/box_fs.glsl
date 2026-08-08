@@ -12,8 +12,8 @@ const vec3 topColor = vec3(.4, .6, 1.);
 const vec3 horizonColor = vec3(.8, .9, 1.);
 const vec3 bottomColor = vec3(.05, .1, .2);
 
-const float fogStart = 32.;
-const float fogEnd = 96.;
+const float fogStart = 24.;
+const float fogEnd = 64.;
 
 void main() {
     vec4 baseColor = texture(atlas, vTex);
