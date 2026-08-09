@@ -19,8 +19,8 @@
 #pragma pack(push, 1)
 typedef struct client_update_pkt_s {
     int sender_socket;
-    vec3_t position;
-    vec3_t velocity;
+    struct vector3 position;
+    struct vector3 velocity;
     float head_yaw;
     float head_pitch;
 } client_update_pkt_t;

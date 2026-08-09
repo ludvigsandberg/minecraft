@@ -5,47 +5,50 @@
 #include <string.h>
 #include <assert.h>
 
-#define ARR_APPEND(ARR, COUNT, CAPACITY, SRC)                                 \
-    ARR_APPEND_N(ARR, COUNT, CAPACITY, 1, SRC)
+struct array_info {
+    size_t size;
+    size_t cap;
+};
 
-#define ARR_APPEND_N(ARR, COUNT, CAPACITY, N, SRC)                            \
-    ARR_INSERT_N(ARR, COUNT, CAPACITY, COUNT, N, SRC)
+#define ARRAY_APPEND(ELEMS, INFO, SRC) ARRAY_APPEND_N(ELEMS, INFO, 1, SRC)
 
-#define ARR_INSERT(ARR, COUNT, CAPACITY, I, SRC)                              \
-    ARR_INSERT_N(ARR, COUNT, CAPACITY, I, 1, SRC)
+#define ARRAY_APPEND_N(ELEMS, INFO, N, SRC) ARRAY_INSERT_N(ELEMS, INFO, N, SRC)
 
-#define ARR_INSERT_N(ARR, COUNT, CAPACITY, I, N, SRC)                         \
+#define ARRAY_INSERT(ELEMS, INFO, I, SRC)                                     \
+    ARRAY_INSERT_N(ELEMS, INFO, I, 1, SRC)
+
+#define ARRAY_INSERT_N(ELEMS, INFO, I, N, SRC)                                \
     do {                                                                      \
-        assert((I) <= (COUNT));                                               \
+        assert((I) <= (INFO).size);                                           \
                                                                               \
-        if ((COUNT) + (N) > (CAPACITY)) {                                     \
-            (CAPACITY) = ((COUNT) + (N)) * 2;                                 \
-            (ARR)      = realloc((ARR), (CAPACITY) * sizeof(*(ARR)));         \
+        if ((INFO).size + (N) > (INFO).cap) {                                 \
+            (INFO).cap = ((INFO).size + (N)) * 2;                             \
+            (ELEMS)    = realloc((ELEMS), (INFO).cap * sizeof(*(ELEMS)));     \
         }                                                                     \
                                                                               \
-        if ((I) != (COUNT)) {                                                 \
-            memmove((ARR) + (I) + (N), (ARR) + (I),                           \
-                    ((COUNT) - (I)) * sizeof(*(ARR)));                        \
+        if ((I) != (INFO).size) {                                             \
+            memmove((ELEMS) + (I) + (N), (ELEMS) + (I),                       \
+                    ((INFO).size - (I)) * sizeof(*(ELEMS)));                  \
         }                                                                     \
                                                                               \
-        memcpy((ARR) + (I), (SRC), (N) * sizeof(*(ARR)));                     \
+        memcpy((ELEMS) + (I), (SRC), (N) * sizeof(*(ELEMS)));                 \
                                                                               \
-        (COUNT) += (N);                                                       \
+        (INFO).size += (N);                                                   \
     } while (0)
 
-#define ARR_REMOVE(ARR, COUNT, I) ARR_REMOVE_N(ARR, COUNT, I, 1)
+#define ARRAY_REMOVE(ELEMS, INFO, I) ARRAY_REMOVE_N(ELEMS, INFO, I, 1)
 
-#define ARR_REMOVE_N(ARR, COUNT, I, N)                                        \
+#define ARRAY_REMOVE_N(ELEMS, INFO, I, N)                                     \
     do {                                                                      \
-        assert((I) < (COUNT));                                                \
-        assert((I) + (N) <= (COUNT));                                         \
+        assert((I) < (INFO).size);                                            \
+        assert((I) + (N) <= (INFO).size);                                     \
                                                                               \
-        if ((I) + (N) < (COUNT)) {                                            \
-            memmove((ARR) + (I), (ARR) + (I) + (N),                           \
-                    ((COUNT) - (I) - (N)) * sizeof(*(ARR)));                  \
+        if ((I) + (N) < (INFO).size) {                                        \
+            memmove((ELEMS) + (I), (ELEMS) + (I) + (N),                       \
+                    ((INFO).size - (I) - (N)) * sizeof(*(ELEMS)));            \
         }                                                                     \
                                                                               \
-        (COUNT) -= (N);                                                       \
+        (INFO).size -= (N);                                                   \
     } while (0)
 
 #endif

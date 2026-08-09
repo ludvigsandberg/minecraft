@@ -15,36 +15,37 @@
 #define CHUNK_SIZE  16
 #define CHUNK_TOTAL CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE
 
-typedef struct {
-    chunk_coord_t coord;
-} chunk_job_t;
+struct chunk_job {
+    struct coord coord;
+};
 
-typedef struct {
-    chunk_coord_t coord;
+struct chunk_result {
+    struct coord coord;
     unsigned char blocks[CHUNK_TOTAL];
-} chunk_result_t;
+};
 
-typedef struct {
-    chunk_coord_t coord;
+struct chunk {
+    struct coord coord;
 
     unsigned char blocks[CHUNK_TOTAL];
 
     /* First 4 bits = skylight, last 4 bits = block light. */
     unsigned char light[CHUNK_TOTAL];
 
-    int dirty; /* True if mesh needs to be regenerated. */
+    /* TRUE if mesh needs to be regenerated. */
+    int is_dirty;
 
     GLuint vertex_array;
     GLuint vertex_buffer;
     GLuint element_buffer;
     size_t index_count;
-} chunk_t;
+};
 
-struct world_s; /* Forward declare. */
+struct world;
 
-void chunk_init(chunk_t *chunk, const unsigned char *blocks,
-                const chunk_coord_t *coord);
-void chunk_free(chunk_t *chunk);
-void chunk_update(chunk_t *chunk, const struct world_s *world);
+void chunk_init(struct chunk *chunk, const unsigned char *blocks,
+                const struct coord *coord);
+void chunk_free(struct chunk *chunk);
+void chunk_update(struct chunk *chunk, const struct world *world);
 
 #endif

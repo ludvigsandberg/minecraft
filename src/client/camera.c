@@ -43,12 +43,12 @@ void camera_update(camera_t *camera, const window_t *window,
     float speed;
     float yaw_rad;
     float pitch_rad;
-    vec3_t forward;
-    vec3_t right;
+    struct vector3 forward;
+    struct vector3 right;
     float look_speed;
-    vec3_t center;
-    vec3_t up = {{0.0f, 1.0f, 0.0f}};
-    vec3_t eye_pos;
+    struct vector3 center;
+    struct vector3 up = {{0.0f, 1.0f, 0.0f}};
+    struct vector3 eye_pos;
 
     assert(camera);
     assert(window);

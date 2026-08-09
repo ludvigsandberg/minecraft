@@ -7,6 +7,8 @@
 #include "matrix.h"
 #include "client/opengl.h"
 
+#define GLYPH_PIXELS 12
+
 static const float sky_vertices[] = {-1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f,
                                      -1.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 1.0f};
 
@@ -24,12 +26,35 @@ static const unsigned int box_indices[36] = {
     0,  1,  2,  2,  3,  0,  4,  5,  6,  6,  7,  4,  8,  9,  10, 10, 11, 8,
     12, 13, 14, 14, 15, 12, 16, 17, 18, 18, 19, 16, 20, 21, 22, 22, 23, 20};
 
-void renderer_init(renderer_t *renderer) {
+static const unsigned int glyph_indices[6] = {0, 1, 2, 2, 3, 0};
+
+static const int glyph_widths[256] = {
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 2, 6, 2, 8, /*                       */
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, 8, /* 0-9                   */
+    7, 6, 6, 6, 6, 6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, /* @, A-O                */
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, /* P-Z                   */
+    3, 6, 6, 6, 6, 6, 5, 6, 6, 2, 6, 5, 3, 6, 6, 6, /* ', a-o                */
+    6, 6, 6, 6, 4, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, /* p-z                   */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, /*                       */
+};
+
+void renderer_init(struct renderer *renderer) {
     /* Textures. */
 
     renderer->terrain_texture =
         opengl_texture_raw("res/terrain.raw", 256, 256);
     renderer->char_texture = opengl_texture_raw("res/char.raw", 64, 32);
+    renderer->charset_texture =
+        opengl_texture_raw("res/default.raw", 128, 128);
 
     /* Sky. */
 
@@ -92,10 +117,45 @@ void renderer_init(renderer_t *renderer) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->box_element_buffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(box_indices), box_indices,
                  GL_STATIC_DRAW);
+
+    /* GUI. */
+
+    renderer->glyphs           = malloc(1024 * sizeof(struct glyph));
+    renderer->glyphs_info.size = 0;
+    renderer->glyphs_info.cap  = 1024;
+
+    renderer->charset_shader_program =
+        opengl_shader_program("res/charset_vs.glsl", "res/charset_fs.glsl");
+
+    renderer->uniform_locations.charset.texture =
+        glGetUniformLocation(renderer->charset_shader_program, "charset");
+
+    /* Create buffers. */
+
+    glGenVertexArrays(1, &renderer->charset_vertex_array);
+    glBindVertexArray(renderer->charset_vertex_array);
+
+    glGenBuffers(1, &renderer->charset_vertex_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->charset_vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, 1024 * 4 * 4 * sizeof(float), NULL,
+                 GL_DYNAMIC_DRAW); /* Pre allocate. */
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                          (void *)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                          (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glGenBuffers(1, &renderer->charset_element_buffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->charset_element_buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 1024 * 6 * sizeof(unsigned int),
+                 NULL, GL_DYNAMIC_DRAW); /* Pre allocate. */
 }
 
-void renderer_draw_sky(const renderer_t *renderer, const camera_t *camera) {
-    mat4x4_t inv_view_matrix;
+void renderer_draw_sky(const struct renderer *renderer,
+                       const struct camera *camera) {
+    struct matrix4 inv_view_matrix;
 
     assert(renderer);
     assert(camera);
@@ -114,9 +174,10 @@ void renderer_draw_sky(const renderer_t *renderer, const camera_t *camera) {
     glDepthMask(GL_TRUE);
 }
 
-void renderer_draw_chunk(const renderer_t *renderer, const chunk_t *chunk,
-                         const camera_t *camera) {
-    mat4x4_t mvp_matrix;
+void renderer_draw_chunk(const struct renderer *renderer,
+                         const struct chunk *chunk,
+                         const struct camera *camera) {
+    struct matrix4 mvp_matrix;
 
     assert(renderer);
     assert(chunk);
@@ -132,7 +193,7 @@ void renderer_draw_chunk(const renderer_t *renderer, const chunk_t *chunk,
                  (const GLfloat *)camera->pos.elems);
 
     mvp_matrix =
-        mat4x4_mul(&camera->viewport.projection_matrix, &camera->view_matrix);
+        matrix4_mul(&camera->viewport.projection_matrix, &camera->view_matrix);
 
     glUniformMatrix4fv(renderer->uniform_locations.chunk.mvp_matrix, 1,
                        GL_FALSE, (const GLfloat *)mvp_matrix.elems);
@@ -143,16 +204,28 @@ void renderer_draw_chunk(const renderer_t *renderer, const chunk_t *chunk,
                    0);
 }
 
-static void draw_box(const renderer_t *renderer, const float *uvs,
-                     const mat4x4_t *model_matrix, const camera_t *camera) {
-    mat4x4_t mvp_matrix;
+void renderer_draw_world(const struct renderer *renderer, struct world *world,
+                         struct camera *camera) {
+    int i;
+
+    for (i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
+        if (world->loaded_chunks[i]) {
+            renderer_draw_chunk(renderer, world->loaded_chunks[i], camera);
+        }
+    }
+}
+
+static void draw_box(const struct renderer *renderer, const float *uvs,
+                     const struct matrix4 *model_matrix,
+                     const struct camera *camera) {
+    struct matrix4 mvp_matrix;
 
     glUniform2fv(renderer->uniform_locations.box.uvs, 24,
                  (const GLfloat *)uvs);
 
     mvp_matrix =
-        mat4x4_mul(&camera->viewport.projection_matrix, &camera->view_matrix);
-    mvp_matrix = mat4x4_mul(&mvp_matrix, model_matrix);
+        matrix4_mul(&camera->viewport.projection_matrix, &camera->view_matrix);
+    mvp_matrix = matrix4_mul(&mvp_matrix, model_matrix);
 
     glUniformMatrix4fv(renderer->uniform_locations.box.mvp_matrix, 1, GL_FALSE,
                        (const GLfloat *)mvp_matrix.elems);
@@ -207,38 +280,39 @@ static const float player_left_leg_uvs[48] = {
 #define DEG2RAD(deg) ((deg) * (3.14159265358979323846f / 180.0f))
 #endif
 
-void renderer_draw_player(const renderer_t *renderer, const vec3_t *position,
-                          const vec3_t *velocity, float head_yaw,
-                          float head_pitch, const camera_t *camera) {
-    mat4x4_t head_matrix      = MAT4X4_IDENTITY;
-    mat4x4_t torso_matrix     = MAT4X4_IDENTITY;
-    mat4x4_t right_arm_matrix = MAT4X4_IDENTITY;
-    mat4x4_t left_arm_matrix  = MAT4X4_IDENTITY;
-    mat4x4_t right_leg_matrix = MAT4X4_IDENTITY;
-    mat4x4_t left_leg_matrix  = MAT4X4_IDENTITY;
+void renderer_draw_player(const struct renderer *renderer,
+                          const struct vector3 *position,
+                          const struct vector3 *velocity, float head_yaw,
+                          float head_pitch, const struct camera *camera) {
+    struct matrix4 head_matrix      = MATRIX4_IDENTITY;
+    struct matrix4 torso_matrix     = MATRIX4_IDENTITY;
+    struct matrix4 right_arm_matrix = MATRIX4_IDENTITY;
+    struct matrix4 left_arm_matrix  = MATRIX4_IDENTITY;
+    struct matrix4 right_leg_matrix = MATRIX4_IDENTITY;
+    struct matrix4 left_leg_matrix  = MATRIX4_IDENTITY;
 
-    mat4x4_t body_rot      = MAT4X4_IDENTITY;
-    mat4x4_t head_rot      = MAT4X4_IDENTITY;
-    mat4x4_t right_arm_rot = MAT4X4_IDENTITY;
-    mat4x4_t left_arm_rot  = MAT4X4_IDENTITY;
-    mat4x4_t right_leg_rot = MAT4X4_IDENTITY;
-    mat4x4_t left_leg_rot  = MAT4X4_IDENTITY;
+    struct matrix4 body_rot      = MATRIX4_IDENTITY;
+    struct matrix4 head_rot      = MATRIX4_IDENTITY;
+    struct matrix4 right_arm_rot = MATRIX4_IDENTITY;
+    struct matrix4 left_arm_rot  = MATRIX4_IDENTITY;
+    struct matrix4 right_leg_rot = MATRIX4_IDENTITY;
+    struct matrix4 left_leg_rot  = MATRIX4_IDENTITY;
 
-    vec3_t head_pos;
-    vec3_t torso_pos;
-    vec3_t right_arm_pos;
-    vec3_t left_arm_pos;
-    vec3_t right_leg_pos;
-    vec3_t left_leg_pos;
+    struct vector3 head_pos;
+    struct vector3 torso_pos;
+    struct vector3 right_arm_pos;
+    struct vector3 left_arm_pos;
+    struct vector3 right_leg_pos;
+    struct vector3 left_leg_pos;
 
-    vec3_t head_scale;
-    vec3_t torso_scale;
-    vec3_t limb_scale;
+    struct vector3 head_scale;
+    struct vector3 torso_scale;
+    struct vector3 limb_scale;
 
-    vec3_t pivot_top;
-    vec3_t pivot_top_neg;
-    vec3_t pivot_hip;
-    vec3_t pivot_hip_neg;
+    struct vector3 pivot_top;
+    struct vector3 pivot_top_neg;
+    struct vector3 pivot_hip;
+    struct vector3 pivot_hip_neg;
 
     float body_yaw;
     float speed;
@@ -328,60 +402,60 @@ void renderer_draw_player(const renderer_t *renderer, const vec3_t *position,
     head_pos.VEC_Y = 1.75f;
     head_pos.VEC_Z = 0.0f;
 
-    body_rot = mat4x4_rotate_y(&body_rot, body_yaw);
+    body_rot = matrix4_rotate_y(&body_rot, body_yaw);
 
-    head_rot = mat4x4_rotate_y(&head_rot, DEG2RAD(head_yaw));
-    head_rot = mat4x4_rotate_x(&head_rot, DEG2RAD(head_pitch));
+    head_rot = matrix4_rotate_y(&head_rot, DEG2RAD(head_yaw));
+    head_rot = matrix4_rotate_x(&head_rot, DEG2RAD(head_pitch));
 
-    right_arm_rot = mat4x4_translate(&right_arm_rot, &pivot_top);
-    right_arm_rot = mat4x4_rotate_x(&right_arm_rot, -swing_angle);
-    right_arm_rot = mat4x4_translate(&right_arm_rot, &pivot_top_neg);
+    right_arm_rot = matrix4_translate(&right_arm_rot, &pivot_top);
+    right_arm_rot = matrix4_rotate_x(&right_arm_rot, -swing_angle);
+    right_arm_rot = matrix4_translate(&right_arm_rot, &pivot_top_neg);
 
-    left_arm_rot = mat4x4_translate(&left_arm_rot, &pivot_top);
-    left_arm_rot = mat4x4_rotate_x(&left_arm_rot, swing_angle);
-    left_arm_rot = mat4x4_translate(&left_arm_rot, &pivot_top_neg);
+    left_arm_rot = matrix4_translate(&left_arm_rot, &pivot_top);
+    left_arm_rot = matrix4_rotate_x(&left_arm_rot, swing_angle);
+    left_arm_rot = matrix4_translate(&left_arm_rot, &pivot_top_neg);
 
-    right_leg_rot = mat4x4_translate(&right_leg_rot, &pivot_hip);
-    right_leg_rot = mat4x4_rotate_x(&right_leg_rot, swing_angle);
-    right_leg_rot = mat4x4_translate(&right_leg_rot, &pivot_hip_neg);
+    right_leg_rot = matrix4_translate(&right_leg_rot, &pivot_hip);
+    right_leg_rot = matrix4_rotate_x(&right_leg_rot, swing_angle);
+    right_leg_rot = matrix4_translate(&right_leg_rot, &pivot_hip_neg);
 
-    left_leg_rot = mat4x4_translate(&left_leg_rot, &pivot_hip);
-    left_leg_rot = mat4x4_rotate_x(&left_leg_rot, -swing_angle);
-    left_leg_rot = mat4x4_translate(&left_leg_rot, &pivot_hip_neg);
+    left_leg_rot = matrix4_translate(&left_leg_rot, &pivot_hip);
+    left_leg_rot = matrix4_rotate_x(&left_leg_rot, -swing_angle);
+    left_leg_rot = matrix4_translate(&left_leg_rot, &pivot_hip_neg);
 
-    head_matrix = mat4x4_translate(&head_matrix, position);
-    head_matrix = mat4x4_translate(&head_matrix, &head_pos);
-    head_matrix = mat4x4_mul(&head_matrix, &head_rot);
-    head_matrix = mat4x4_scale(&head_matrix, &head_scale);
+    head_matrix = matrix4_translate(&head_matrix, position);
+    head_matrix = matrix4_translate(&head_matrix, &head_pos);
+    head_matrix = matrix4_mul(&head_matrix, &head_rot);
+    head_matrix = matrix4_scale(&head_matrix, &head_scale);
 
-    torso_matrix = mat4x4_translate(&torso_matrix, position);
-    torso_matrix = mat4x4_mul(&torso_matrix, &body_rot);
-    torso_matrix = mat4x4_translate(&torso_matrix, &torso_pos);
-    torso_matrix = mat4x4_scale(&torso_matrix, &torso_scale);
+    torso_matrix = matrix4_translate(&torso_matrix, position);
+    torso_matrix = matrix4_mul(&torso_matrix, &body_rot);
+    torso_matrix = matrix4_translate(&torso_matrix, &torso_pos);
+    torso_matrix = matrix4_scale(&torso_matrix, &torso_scale);
 
-    right_arm_matrix = mat4x4_translate(&right_arm_matrix, position);
-    right_arm_matrix = mat4x4_mul(&right_arm_matrix, &body_rot);
-    right_arm_matrix = mat4x4_translate(&right_arm_matrix, &right_arm_pos);
-    right_arm_matrix = mat4x4_mul(&right_arm_matrix, &right_arm_rot);
-    right_arm_matrix = mat4x4_scale(&right_arm_matrix, &limb_scale);
+    right_arm_matrix = matrix4_translate(&right_arm_matrix, position);
+    right_arm_matrix = matrix4_mul(&right_arm_matrix, &body_rot);
+    right_arm_matrix = matrix4_translate(&right_arm_matrix, &right_arm_pos);
+    right_arm_matrix = matrix4_mul(&right_arm_matrix, &right_arm_rot);
+    right_arm_matrix = matrix4_scale(&right_arm_matrix, &limb_scale);
 
-    left_arm_matrix = mat4x4_translate(&left_arm_matrix, position);
-    left_arm_matrix = mat4x4_mul(&left_arm_matrix, &body_rot);
-    left_arm_matrix = mat4x4_translate(&left_arm_matrix, &left_arm_pos);
-    left_arm_matrix = mat4x4_mul(&left_arm_matrix, &left_arm_rot);
-    left_arm_matrix = mat4x4_scale(&left_arm_matrix, &limb_scale);
+    left_arm_matrix = matrix4_translate(&left_arm_matrix, position);
+    left_arm_matrix = matrix4_mul(&left_arm_matrix, &body_rot);
+    left_arm_matrix = matrix4_translate(&left_arm_matrix, &left_arm_pos);
+    left_arm_matrix = matrix4_mul(&left_arm_matrix, &left_arm_rot);
+    left_arm_matrix = matrix4_scale(&left_arm_matrix, &limb_scale);
 
-    right_leg_matrix = mat4x4_translate(&right_leg_matrix, position);
-    right_leg_matrix = mat4x4_mul(&right_leg_matrix, &body_rot);
-    right_leg_matrix = mat4x4_translate(&right_leg_matrix, &right_leg_pos);
-    right_leg_matrix = mat4x4_mul(&right_leg_matrix, &right_leg_rot);
-    right_leg_matrix = mat4x4_scale(&right_leg_matrix, &limb_scale);
+    right_leg_matrix = matrix4_translate(&right_leg_matrix, position);
+    right_leg_matrix = matrix4_mul(&right_leg_matrix, &body_rot);
+    right_leg_matrix = matrix4_translate(&right_leg_matrix, &right_leg_pos);
+    right_leg_matrix = matrix4_mul(&right_leg_matrix, &right_leg_rot);
+    right_leg_matrix = matrix4_scale(&right_leg_matrix, &limb_scale);
 
-    left_leg_matrix = mat4x4_translate(&left_leg_matrix, position);
-    left_leg_matrix = mat4x4_mul(&left_leg_matrix, &body_rot);
-    left_leg_matrix = mat4x4_translate(&left_leg_matrix, &left_leg_pos);
-    left_leg_matrix = mat4x4_mul(&left_leg_matrix, &left_leg_rot);
-    left_leg_matrix = mat4x4_scale(&left_leg_matrix, &limb_scale);
+    left_leg_matrix = matrix4_translate(&left_leg_matrix, position);
+    left_leg_matrix = matrix4_mul(&left_leg_matrix, &body_rot);
+    left_leg_matrix = matrix4_translate(&left_leg_matrix, &left_leg_pos);
+    left_leg_matrix = matrix4_mul(&left_leg_matrix, &left_leg_rot);
+    left_leg_matrix = matrix4_scale(&left_leg_matrix, &limb_scale);
 
     draw_box(renderer, player_head_uvs, &head_matrix, camera);
     draw_box(renderer, player_torso_uvs, &torso_matrix, camera);
@@ -389,4 +463,170 @@ void renderer_draw_player(const renderer_t *renderer, const vec3_t *position,
     draw_box(renderer, player_left_arm_uvs, &left_arm_matrix, camera);
     draw_box(renderer, player_right_leg_uvs, &right_leg_matrix, camera);
     draw_box(renderer, player_left_leg_uvs, &left_leg_matrix, camera);
+}
+
+void renderer_gui_draw_text(struct renderer *renderer, int x, int y,
+                            const char *fmt, ...) {
+    va_list args;
+    char buf[512];
+    int len;
+    int cursor;
+    int i;
+
+    /* Format. */
+
+    va_start(args, fmt);
+
+    len = vsprintf(buf, fmt, args);
+
+    va_end(args);
+
+    /* Store. */
+
+    cursor = x;
+
+    for (i = 0; i < len; i++) {
+        struct glyph glyph;
+        char c = buf[i];
+
+        if (gui->glyph_count == MAX_GLYPHS) {
+            break;
+        }
+
+        glyph.charset.x   = c % 16;
+        glyph.charset.y   = c / 16;
+        glyph.charset.w   = glyph_widths[(size_t)c];
+        glyph.screen.x    = cursor;
+        glyph.screen.y    = y;
+        glyph.screen.w    = GLYPH_PIXELS * glyph.charset.w / 8;
+        glyph.screen.h    = GLYPH_PIXELS;
+        glyph.color.VEC_R = 1.0f;
+        glyph.color.VEC_G = 1.0f;
+        glyph.color.VEC_B = 1.0f;
+
+        gui->glyphs[gui->glyph_count++] = glyph;
+
+        cursor += glyph.screen.w;
+    }
+}
+
+void renderer_gui_flush(struct renderer *renderer,
+                        const struct camera *camera) {
+    float mesh_vertices[MAX_GLYPHS * 16];
+    size_t mesh_vertex_count = 0;
+
+    unsigned int mesh_indices[MAX_GLYPHS * 6];
+    size_t mesh_index_count = 0;
+
+    size_t glyph_idx;
+    int i;
+
+    assert(renderer);
+    assert(camera);
+
+    if (gui->glyph_count == 0) {
+        return;
+    }
+
+    /* Batch glyphs. */
+
+    for (glyph_idx = 0; glyph_idx < gui->glyph_count; glyph_idx++) {
+        struct glyph glyph;
+        size_t num_vertices;
+        float x0;
+        float x1;
+        float y_top;
+        float y_bottom;
+        float y0;
+        float y1;
+        float u0;
+        float u1;
+        float v0;
+        float v1;
+        float *vertex;
+
+        glyph = gui->glyphs[glyph_idx];
+
+        /* Append indices. */
+
+        num_vertices = mesh_vertex_count / 4;
+
+        for (i = 0; i < 6; i++) {
+            unsigned int index = (unsigned int)num_vertices + glyph_indices[i];
+
+            mesh_indices[mesh_index_count++] = index;
+        }
+
+        /* Append vertices. */
+
+        x0 = ((float)glyph.screen.x * 2.0f / (float)camera->viewport.width) -
+             1.0f;
+        x1 = ((float)(glyph.screen.x + glyph.screen.w) * 2.0f /
+              (float)camera->viewport.width) -
+             1.0f;
+        y_top    = (float)(camera->viewport.height - glyph.screen.y);
+        y_bottom = y_top - (float)glyph.screen.h;
+        y0       = (y_top * 2.0f / (float)camera->viewport.height) - 1.0f;
+        y1       = (y_bottom * 2.0f / (float)camera->viewport.height) - 1.0f;
+        u0       = (float)(glyph.charset.x * 8 + 0) / 128.0f;
+        u1       = (float)(glyph.charset.x * 8 + glyph.charset.w) / 128.0f;
+        v0       = (float)(glyph.charset.y * 8 + 0) / 128.0f;
+        v1       = (float)(glyph.charset.y * 8 + 8) / 128.0f;
+
+        vertex     = mesh_vertices + mesh_vertex_count;
+        vertex[0]  = x0;
+        vertex[1]  = y1;
+        vertex[2]  = u0;
+        vertex[3]  = v1;
+        vertex[4]  = x1;
+        vertex[5]  = y1;
+        vertex[6]  = u1;
+        vertex[7]  = v1;
+        vertex[8]  = x1;
+        vertex[9]  = y0;
+        vertex[10] = u1;
+        vertex[11] = v0;
+        vertex[12] = x0;
+        vertex[13] = y0;
+        vertex[14] = u0;
+        vertex[15] = v0;
+
+        mesh_vertex_count += 16;
+    }
+
+    /* Upload mesh to GPU. */
+
+    glBindVertexArray(gui->vertex_array);
+
+    glBindBuffer(GL_ARRAY_BUFFER, gui->vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER,
+                 (GLsizeiptr)(mesh_vertex_count * sizeof(float)), NULL,
+                 GL_DYNAMIC_DRAW); /* Buffer orphaning. */
+    glBufferSubData(GL_ARRAY_BUFFER, 0,
+                    (GLsizeiptr)(mesh_vertex_count * sizeof(float)),
+                    mesh_vertices);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gui->element_buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 (GLsizeiptr)(mesh_index_count * sizeof(unsigned int)), NULL,
+                 GL_DYNAMIC_DRAW); /* Buffer orphaning. */
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0,
+                    (GLsizeiptr)(mesh_index_count * sizeof(unsigned int)),
+                    mesh_indices);
+
+    /* Draw. */
+
+    glUseProgram(gui->shader_program);
+
+    glUniform1i(gui->charset_texture_uniform_loc, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, gui->charset_texture);
+
+    glBindVertexArray(gui->vertex_array);
+
+    glDrawElements(GL_TRIANGLES, (GLsizei)mesh_index_count, GL_UNSIGNED_INT,
+                   0);
+
+    /* Reset. */
+    gui->glyph_count = 0;
 }

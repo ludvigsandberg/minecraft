@@ -3,6 +3,7 @@
 
 #include <pthread.h>
 
+#include "queue.h"
 #include "coord.h"
 #include "client/opengl.h"
 #include "client/chunk.h"
@@ -14,28 +15,28 @@
 #define LOADED_CHUNKS_TOTAL                                                   \
     LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN * LOADED_CHUNKS_LEN
 
-typedef struct world_s {
-    chunk_coord_t center;
+struct world {
+    struct coord loaded_chunks_center;
 
     /* 3D array of pointers to loaded chunks, NULL for unloaded chunks. */
-    chunk_t *loaded_chunks[LOADED_CHUNKS_TOTAL];
+    struct chunk **loaded_chunks;
+    struct array_info loaded_chunks_info;
 
     pthread_t thread;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     int is_running;
 
-    chunk_job_t **job_queue;
-    size_t job_queue_count;
-    size_t job_queue_cap;
+    struct chunk_job **chunk_jobs;
+    struct queue_info chunk_jobs_info;
 
-    chunk_result_t **result_queue;
-    size_t result_queue_count;
-    size_t result_queue_cap;
-} world_t;
+    struct chunk_result **chunk_results;
+    struct queue_info chunk_results_info;
+};
 
-void world_init(world_t *world);
-void world_update(world_t *world, const camera_t *cam);
-void world_draw(world_t *world, const renderer_t *renderer, camera_t *camera);
+void world_init(struct world *world);
+void world_update(struct world *world, const struct camera *camera);
+void world_draw(struct world *world, const renderer_t *renderer,
+                struct camera *camera);
 
 #endif

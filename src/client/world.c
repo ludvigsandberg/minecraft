@@ -417,13 +417,3 @@ void world_update(world_t *world, const camera_t *cam) {
         }
     }
 }
-
-void world_draw(world_t *world, const renderer_t *renderer, camera_t *camera) {
-    int i;
-
-    for (i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
-        if (world->loaded_chunks[i]) {
-            renderer_draw_chunk(renderer, world->loaded_chunks[i], camera);
-        }
-    }
-}

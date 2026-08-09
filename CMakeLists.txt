@@ -5,6 +5,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(FLAGS
     -std=c90
+    -pthread
     -Wall
     -Wextra
     -Werror

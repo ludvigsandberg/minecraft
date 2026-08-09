@@ -84,7 +84,7 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
         for (y = 0; y < CHUNK_SIZE; y++) {
             for (z = 0; z < CHUNK_SIZE; z++) {
                 unsigned char block;
-                vec2_t uv_offset;
+                struct vector2 uv_offset;
                 int face_idx;
 
                 block = chunk->blocks[INDEX_3D(x, y, z, CHUNK_SIZE)];

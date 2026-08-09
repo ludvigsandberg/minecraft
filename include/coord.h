@@ -1,12 +1,13 @@
 #ifndef COORD_H
 #define COORD_H
 
-typedef struct coord_s {
-    long x;
-    long y;
-    long z;
-} coord_t;
+struct coord {
+    int x;
+    int y;
+    int z;
+};
 
-typedef coord_t chunk_coord_t;
+struct coord coord_add(const struct coord *a, const struct coord *b);
+struct coord coord_sub(const struct coord *a, const struct coord *b);
 
 #endif

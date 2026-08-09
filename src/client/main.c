@@ -25,13 +25,12 @@
 #include "client/chunk.h"
 #include "client/world.h"
 #include "client/camera.h"
-#include "client/gui.h"
 
 #pragma pack(push, 1)
 typedef struct client_update_pkt_s {
     int sender_socket;
-    vec3_t position;
-    vec3_t velocity;
+    struct vector3 position;
+    struct vector3 velocity;
     float head_yaw;
     float head_pitch;
 } client_update_pkt_t;
@@ -39,8 +38,8 @@ typedef struct client_update_pkt_s {
 
 typedef struct remote_player_s {
     int socket;
-    vec3_t position;
-    vec3_t velocity;
+    struct vector3 position;
+    struct vector3 velocity;
     float head_yaw;
     float head_pitch;
 } remote_player_t;
@@ -70,7 +69,6 @@ int main(int argc, char **argv) {
     renderer_t renderer;
     camera_t camera;
     world_t world;
-    gui_t gui;
     double last_time;
 
     int server_socket;
@@ -84,7 +82,7 @@ int main(int argc, char **argv) {
     size_t remote_player_count      = 0;
     size_t remote_player_cap        = 0;
 
-    vec3_t last_pos;
+    struct vector3 last_pos;
 
     /* Parse server hostname and port. */
     if (argc >= 3) {
@@ -141,7 +139,6 @@ int main(int argc, char **argv) {
     camera_init(&camera);
     world_init(&world);
     renderer_init(&renderer);
-    gui_init(&gui);
 
     last_pos  = camera.pos;
     last_time = elapsed_time_seconds();
@@ -238,7 +235,7 @@ int main(int argc, char **argv) {
 
         renderer_draw_sky(&renderer, &camera);
 
-        world_draw(&world, &renderer, &camera);
+        renderer_draw_world(&renderer, &world, &camera);
 
         if (multiplayer) {
             for (i = 0; i < remote_player_count; i++) {
@@ -249,22 +246,30 @@ int main(int argc, char **argv) {
             }
         }
 
-        gui_text(&gui, 10, 10, "Minecraft");
-        gui_text(&gui, 10, 10 + vertical, "Frame %.1fms",
-                 (double)(delta_time * 1000.0f));
+        if (multiplayer) {
+            renderer_gui_draw_text(&renderer, 10, 10, "Minecraft Multiplayer");
+        } else {
+            renderer_gui_draw_text(&renderer, 10, 10,
+                                   "Minecraft Singleplayer");
+        }
 
-        gui_text(&gui, 10, 10 + 3 * vertical, "X %.2f",
-                 (double)camera.pos.VEC_X);
-        gui_text(&gui, 10, 10 + 4 * vertical, "Y %.2f",
-                 (double)camera.pos.VEC_Y);
-        gui_text(&gui, 10, 10 + 5 * vertical, "Z %.2f",
-                 (double)camera.pos.VEC_Z);
+        renderer_gui_draw_text(&renderer, 10, 10, "Minecraft");
+        renderer_gui_draw_text(&renderer, 10, 10 + vertical, "Frame %.1fms",
+                               (double)(delta_time * 1000.0f));
 
-        gui_text(&gui, 10, 10 + 7 * vertical, "Yaw %.2f", (double)camera.yaw);
-        gui_text(&gui, 10, 10 + 8 * vertical, "Pitch %.2f",
-                 (double)camera.pitch);
+        renderer_gui_draw_text(&renderer, 10, 10 + 3 * vertical, "X %.2f",
+                               (double)camera.pos.VEC_X);
+        renderer_gui_draw_text(&renderer, 10, 10 + 4 * vertical, "Y %.2f",
+                               (double)camera.pos.VEC_Y);
+        renderer_gui_draw_text(&renderer, 10, 10 + 5 * vertical, "Z %.2f",
+                               (double)camera.pos.VEC_Z);
 
-        gui_flush(&gui, &camera);
+        renderer_gui_draw_text(&renderer, 10, 10 + 7 * vertical, "Yaw %.2f",
+                               (double)camera.yaw);
+        renderer_gui_draw_text(&renderer, 10, 10 + 8 * vertical, "Pitch %.2f",
+                               (double)camera.pitch);
+
+        renderer_gui_flush(&renderer, &camera);
 
         glXSwapBuffers(window.display, window.handle);
     }

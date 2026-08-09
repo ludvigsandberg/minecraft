@@ -6,13 +6,13 @@
 
 double elapsed_time_seconds(void);
 
-typedef struct window_s {
+struct window {
     Display *display;
     Window handle;
-} window_t;
+};
 
-void window_init(window_t *window);
-void window_update(window_t *window);
-int window_is_key_pressed(const window_t *window, KeySym keysym);
+void window_init(struct window *window);
+void window_update(struct window *window);
+int window_is_key_pressed(const struct window *window, KeySym keysym);
 
 #endif

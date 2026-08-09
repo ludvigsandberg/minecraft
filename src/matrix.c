@@ -50,7 +50,7 @@ mat4x4_t mat4x4_mul(const mat4x4_t *a, const mat4x4_t *b) {
     return result;
 }
 
-mat4x4_t mat4x4_translate(const mat4x4_t *mat, const vec3_t *pos) {
+mat4x4_t mat4x4_translate(const mat4x4_t *mat, const struct vector3 *pos) {
     mat4x4_t m = MAT4X4_IDENTITY;
 
     assert(mat);
@@ -117,7 +117,7 @@ mat4x4_t mat4x4_rotate_z(const mat4x4_t *mat, float angle) {
     return mat4x4_mul(mat, &rot);
 }
 
-mat4x4_t mat4x4_scale(const mat4x4_t *mat, const vec3_t *scale) {
+mat4x4_t mat4x4_scale(const mat4x4_t *mat, const struct vector3 *scale) {
     mat4x4_t s = MAT4X4_IDENTITY;
 
     assert(mat);
@@ -158,12 +158,13 @@ mat4x4_t invert_view(const mat4x4_t *view) {
     return result;
 }
 
-mat4x4_t look_at(const vec3_t *pos, const vec3_t *target, const vec3_t *up) {
+mat4x4_t look_at(const struct vector3 *pos, const struct vector3 *target,
+                 const struct vector3 *up) {
     mat4x4_t result;
-    vec3_t diff;
-    vec3_t forward;
-    vec3_t right;
-    vec3_t local_up;
+    struct vector3 diff;
+    struct vector3 forward;
+    struct vector3 right;
+    struct vector3 local_up;
 
     assert(pos);
     assert(target);
