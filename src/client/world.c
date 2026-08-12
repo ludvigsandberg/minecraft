@@ -65,10 +65,10 @@ static float noise3d(float x, float y, float z) {
     return a * (1.0f - w) + b * w;
 }
 
-static void generate(unsigned char *blocks, const chunk_coord_t *coord) {
-    long x;
-    long y;
-    long z;
+static void generate(unsigned char *blocks, const struct coord *coord) {
+    int x;
+    int y;
+    int z;
 
     for (x = 0; x < CHUNK_SIZE; x++) {
         for (y = 0; y < CHUNK_SIZE; y++) {
@@ -110,28 +110,28 @@ static void generate(unsigned char *blocks, const chunk_coord_t *coord) {
     }
 }
 
-static void world_to_local_chunk_coord(const chunk_coord_t *coord,
-                                       const chunk_coord_t *center,
-                                       chunk_coord_t *out_local) {
+static void world_to_local_chunk_coord(const struct coord *coord,
+                                       const struct coord *center,
+                                       struct coord *out_local) {
     out_local->x = coord->x - center->x + RENDER_DISTANCE;
     out_local->y = coord->y - center->y + RENDER_DISTANCE;
     out_local->z = coord->z - center->z + RENDER_DISTANCE;
 }
 
-static size_t local_chunk_coord_to_index(const chunk_coord_t *local) {
+static size_t local_chunk_coord_to_index(const struct coord *local) {
     return (size_t)INDEX_3D(local->x, local->y, local->z, LOADED_CHUNKS_LEN);
 }
 
-static size_t chunk_coord_to_index(const chunk_coord_t *coord,
-                                   const chunk_coord_t *center) {
-    chunk_coord_t local;
+static size_t chunk_coord_to_index(const struct coord *coord,
+                                   const struct coord *center) {
+    struct coord local;
     world_to_local_chunk_coord(coord, center, &local);
 
     return local_chunk_coord_to_index(&local);
 }
 
 static int world_is_chunk_loaded(const world_t *world,
-                                 const chunk_coord_t *coord,
+                                 const struct coord *coord,
                                  chunk_t **out_chunk) {
     chunk_t *chunk_maybe_loaded;
 
@@ -162,12 +162,12 @@ static int world_is_chunk_loaded(const world_t *world,
     return TRUE;
 }
 
-static void *chunk_load_thread(void *ctx) {
-    world_t *world = ctx;
+static void *chunk_thread(void *ctx) {
+    struct world *world = ctx;
 
     while (TRUE) {
-        chunk_job_t *job = NULL;
-        chunk_result_t *res;
+        struct chunk_job *job = NULL;
+        struct chunk_result *res;
 
         pthread_mutex_lock(&world->mutex);
 
@@ -181,14 +181,17 @@ static void *chunk_load_thread(void *ctx) {
         }
 
         if (world->job_queue_count > 0) {
-            job = world->job_queue[world->job_queue_count - 1];
-
-            world->job_queue_count--;
+            QUEUE_POP(world->chunk_jobs, world->chunk_jobs_info, &job);
         }
 
         pthread_mutex_unlock(&world->mutex);
 
-        res        = malloc(sizeof(chunk_result_t));
+        res = malloc(sizeof(struct chunk_result));
+        if (!src) {
+            printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
+            exit(EXIT_FAILURE);
+        }
+
         res->coord = job->coord;
         generate(res->blocks, &res->coord);
 
@@ -203,9 +206,14 @@ static void *chunk_load_thread(void *ctx) {
     return NULL;
 }
 
-static void load_chunk(world_t *world, const chunk_coord_t *coord) {
+static void load_chunk(world_t *world, const struct coord *coord) {
     chunk_job_t *job = malloc(sizeof(chunk_job_t));
-    job->coord       = *coord;
+    if (!job) {
+        printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
+    job->coord = *coord;
 
     pthread_mutex_lock(&world->mutex);
 
@@ -216,7 +224,7 @@ static void load_chunk(world_t *world, const chunk_coord_t *coord) {
 }
 
 void world_init(world_t *world) {
-    chunk_coord_t coord;
+    struct coord coord;
 
     /* Setup chunk loading threads. */
 
@@ -252,13 +260,13 @@ void world_init(world_t *world) {
 }
 
 void world_update(world_t *world, const camera_t *cam) {
-    chunk_coord_t camera_coord;
+    struct coord camera_coord;
     size_t i;
     int is_camera_in_different_chunk = FALSE;
 
-    camera_coord.x = (long)cam->pos.VEC_X / CHUNK_SIZE;
-    camera_coord.y = (long)cam->pos.VEC_Y / CHUNK_SIZE;
-    camera_coord.z = (long)cam->pos.VEC_Z / CHUNK_SIZE;
+    camera_coord.x = (int)cam->pos.VEC_X / CHUNK_SIZE;
+    camera_coord.y = (int)cam->pos.VEC_Y / CHUNK_SIZE;
+    camera_coord.z = (int)cam->pos.VEC_Z / CHUNK_SIZE;
 
     /* Poll threads for new chunks. */
 
@@ -278,6 +286,11 @@ void world_update(world_t *world, const camera_t *cam) {
 
         if (is_within_region) {
             chunk_t *chunk = malloc(sizeof(chunk_t));
+            if (!chunk) {
+                printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
+                exit(EXIT_FAILURE);
+            }
+
             chunk_init(chunk, result->blocks, &result->coord);
 
             world->loaded_chunks[chunk_coord_to_index(&result->coord,
@@ -300,12 +313,12 @@ void world_update(world_t *world, const camera_t *cam) {
 
     /* Move and generate chunks. */
     if (is_camera_in_different_chunk) {
-        chunk_coord_t old_center;
-        chunk_coord_t diff;
+        struct coord old_center;
+        struct coord diff;
         chunk_t *old_loaded_chunks[LOADED_CHUNKS_TOTAL];
-        long x;
-        long y;
-        long z;
+        int x;
+        int y;
+        int z;
 
         old_center    = world->center;
         world->center = camera_coord;
@@ -324,8 +337,8 @@ void world_update(world_t *world, const camera_t *cam) {
         for (x = 0; x < LOADED_CHUNKS_LEN; x++) {
             for (y = 0; y < LOADED_CHUNKS_LEN; y++) {
                 for (z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                    chunk_coord_t coord;
-                    chunk_coord_t old_coord;
+                    struct coord coord;
+                    struct coord old_coord;
                     int delete   = FALSE;
                     int can_copy = TRUE;
 
@@ -352,7 +365,7 @@ void world_update(world_t *world, const camera_t *cam) {
                         size_t idx = local_chunk_coord_to_index(&coord);
 
                         if (old_loaded_chunks[idx]) {
-                            chunk_coord_t below_coord;
+                            struct coord below_coord;
                             chunk_t *below_chunk;
 
                             /* Set chunk below to dirty. */
@@ -391,7 +404,7 @@ void world_update(world_t *world, const camera_t *cam) {
                     }
                     /* Generate new chunk. */
                     else {
-                        chunk_coord_t chunk_coord;
+                        struct coord chunk_coord;
 
                         chunk_coord.x =
                             coord.x + world->center.x - RENDER_DISTANCE;

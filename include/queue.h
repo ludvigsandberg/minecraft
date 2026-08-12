@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 
+/* Ring buffer. */
 struct queue_info {
     size_t head;
     size_t tail;

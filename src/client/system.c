@@ -67,7 +67,7 @@ double elapsed_time_seconds(void) {
     return (double)(clock() - start) / CLOCKS_PER_SEC;
 }
 
-void window_init(window_t *window) {
+void window_init(struct window *window) {
     int framebuffer_count;
     GLXFBConfig *framebuffer_configs;
     GLXFBConfig framebuffer_config;

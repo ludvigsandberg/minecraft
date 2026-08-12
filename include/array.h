@@ -2,6 +2,7 @@
 #define ARRAY_H
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
@@ -24,6 +25,10 @@ struct array_info {
         if ((INFO).size + (N) > (INFO).cap) {                                 \
             (INFO).cap = ((INFO).size + (N)) * 2;                             \
             (ELEMS)    = realloc((ELEMS), (INFO).cap * sizeof(*(ELEMS)));     \
+            if (!(ELEMS)) {                                                   \
+                printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);       \
+                exit(EXIT_FAILURE);                                           \
+            }                                                                 \
         }                                                                     \
                                                                               \
         if ((I) != (INFO).size) {                                             \

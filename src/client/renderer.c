@@ -1,6 +1,7 @@
 #include "client/renderer.h"
 
 #include <stdlib.h>
+#include <varargs.h>
 #include <assert.h>
 #include <math.h>
 
@@ -120,7 +121,12 @@ void renderer_init(struct renderer *renderer) {
 
     /* GUI. */
 
-    renderer->glyphs           = malloc(1024 * sizeof(struct glyph));
+    renderer->glyphs = malloc(1024 * sizeof(struct glyph));
+    if (!renderer->glyphs) {
+        printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+
     renderer->glyphs_info.size = 0;
     renderer->glyphs_info.cap  = 1024;
 

@@ -48,6 +48,10 @@ static GLuint load_shader(GLenum type, const char *path) {
     rewind(file);
 
     src = malloc(len + 1);
+    if (!src) {
+        printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 
     fread(src, 1, len, file);
     fclose(file);
@@ -117,6 +121,10 @@ GLuint opengl_texture_raw(const char *path, int width, int height) {
     }
 
     texture_data = malloc(size);
+    if (!texture_data) {
+        printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
 
     bytes_read = fread(texture_data, 1, size, file);
 

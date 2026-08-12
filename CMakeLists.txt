@@ -46,7 +46,6 @@ add_executable(client
     src/client/camera.c
     src/client/chunk.c
     src/client/opengl.c
-    src/client/gui.c
     src/client/world.c
     src/client/renderer.c
     src/client/system.c)

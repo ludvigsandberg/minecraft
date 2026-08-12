@@ -1,19 +1,13 @@
 # Minecraft
 
-Multiplayer Minecraft in C89/OpenGL
+High-concurrency multiplayer Minecraft in strict C89 with spacial sharding.
 
 ![Video screenshot](docs/Screenshot%202026-07-26%20171316.png)
 ![Screenshot](docs/minecraft%202026-01-18%2010_56_48.png)
-![Screenshot](docs/Screenshot%202026-07-18%20152955.png)
-
-## Features
-
-- Infinite terrain generation
-- Multiplayer
 
 ## Dependencies
 
-- Linux/WSL
+- Linux
 - OpenGL 3.3
 - GCC/Clang
 - CMake
@@ -29,8 +23,17 @@ cmake --build build --config Release
 
 ## Run
 
-Locate the client in `build/` and run it from project root.
+Singleplayer
+```sh
+./build/client
+```
 
-## Contribute
+Connect to server
+```sh
+./build/client <server-address> <port>
+```
 
-PRs are welcome. Format using clang-format.
+Launch server
+```sh
+./build/server <port>
+```

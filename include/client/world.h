@@ -36,7 +36,5 @@ struct world {
 
 void world_init(struct world *world);
 void world_update(struct world *world, const struct camera *camera);
-void world_draw(struct world *world, const renderer_t *renderer,
-                struct camera *camera);
 
 #endif
