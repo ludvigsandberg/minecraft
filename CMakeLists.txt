@@ -50,7 +50,7 @@ add_executable(client
     src/client/renderer.c
     src/client/system.c)
 
-target_include_directories(client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(client PRIVATE glad m X11 GL)
 target_compile_options(client PRIVATE ${FLAGS})
 
@@ -63,6 +63,6 @@ add_executable(server
     src/matrix.c
     src/server/main.c)
 
-target_include_directories(server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(server PRIVATE m)
 target_compile_options(server PRIVATE ${FLAGS})

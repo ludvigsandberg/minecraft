@@ -41,7 +41,7 @@ struct renderer {
 
     GLuint chunk_shader_program;
 
-    /* Entity (box). */
+    /* Box. */
 
     GLuint box_shader_program;
     GLuint box_vertex_buffer;
@@ -50,8 +50,8 @@ struct renderer {
 
     /* GUI. */
 
-    struct glyph *glyphs;
-    struct array_info glyphs_info;
+    struct array glyphs;
+    struct glyph *glyph_elems;
 
     GLuint charset_shader_program;
 
@@ -97,8 +97,8 @@ void renderer_draw_player(const struct renderer *renderer,
                           const struct vector3 *velocity, float head_yaw,
                           float head_pitch, const struct camera *camera);
 
-void renderer_gui_draw_text(struct renderer *renderer, int x, int y,
-                            const char *fmt, ...);
+void renderer_gui_text(struct renderer *renderer, int x, int y,
+                       const char *fmt, ...);
 void renderer_gui_flush(struct renderer *renderer,
                         const struct camera *camera);
 

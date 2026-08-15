@@ -11,8 +11,10 @@ struct window {
     Window handle;
 };
 
-void window_init(struct window *window);
+void window_init(struct window *window, const char *title, int width,
+                 int height);
 void window_update(struct window *window);
+
 int window_is_key_pressed(const struct window *window, KeySym keysym);
 
 #endif

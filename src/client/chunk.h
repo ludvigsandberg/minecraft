@@ -7,22 +7,15 @@
 
 #include "coord.h"
 
-#define BLOCK_AIR     0
-#define BLOCK_GRASS   1
-#define BLOCK_STONE   2
-#define BLOCK_BEDROCK 3
+#define BLOCK_AIR         0
+#define BLOCK_DIRT        1
+#define BLOCK_GRASS_BLOCK 2
+#define BLOCK_STONE       3
+#define BLOCK_COBBLESTONE 4
+#define BLOCK_BEDROCK     5
 
 #define CHUNK_SIZE  16
 #define CHUNK_TOTAL CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE
-
-struct chunk_job {
-    struct coord coord;
-};
-
-struct chunk_result {
-    struct coord coord;
-    unsigned char blocks[CHUNK_TOTAL];
-};
 
 struct chunk {
     struct coord coord;

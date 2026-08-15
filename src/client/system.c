@@ -154,7 +154,7 @@ void window_init(struct window *window) {
     }
 }
 
-void window_update(window_t *window) {
+void window_update(struct window *window) {
     XEvent event;
 
     while (XPending(window->display) > 0) {
@@ -182,11 +182,11 @@ void window_update(window_t *window) {
     }
 }
 
-int window_is_key_pressed(const window_t *window, KeySym keysym) {
+int window_is_key_pressed(const struct window *window, KeySym keysym) {
     KeyCode code = XKeysymToKeycode(window->display, keysym);
-
     if (!code) {
         return FALSE;
     }
+
     return key_state[code];
 }

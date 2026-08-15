@@ -52,9 +52,10 @@ static int is_face_visible(unsigned char *blocks, int x, int y, int z,
            BLOCK_AIR;
 }
 
-static unsigned char get_face_light_level(chunk_t *chunk, int x, int y, int z,
-                                          int dir_x, int dir_y, int dir_z,
-                                          const world_t *world) {
+static unsigned char get_face_light_level(struct chunk *chunk, int x, int y,
+                                          int z, int dir_x, int dir_y,
+                                          int dir_z,
+                                          const struct world *world) {
     (void)chunk;
     (void)x;
     (void)y;
@@ -67,7 +68,7 @@ static unsigned char get_face_light_level(chunk_t *chunk, int x, int y, int z,
     return 16;
 }
 
-static void generate_mesh(chunk_t *chunk, const world_t *world) {
+static void generate_mesh(struct chunk *chunk, const struct world *world) {
     float mesh_vertices[CHUNK_TOTAL * 6 * 4 * 7];
     size_t mesh_vertex_count = 0;
 
@@ -146,11 +147,11 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
                         for (i = 0; i < 4; i++) {
                             size_t p;
                             size_t t;
-                            float *vertex = mesh_vertices + mesh_vertex_count;
 
                             p = (size_t)face_idx * 12 + (size_t)i * 3;
                             t = (size_t)face_idx * 8 + (size_t)i * 2;
 
+                            float *vertex = mesh_vertices + mesh_vertex_count;
                             vertex[0] = (float)(chunk->coord.x * CHUNK_SIZE) +
                                         cube_positions[p + 0] + (float)x;
                             vertex[1] = (float)(chunk->coord.y * CHUNK_SIZE) +
@@ -195,15 +196,15 @@ static void generate_mesh(chunk_t *chunk, const world_t *world) {
     chunk->index_count = mesh_index_count;
 }
 
-void chunk_init(chunk_t *chunk, const unsigned char *blocks,
-                const chunk_coord_t *coord) {
+void chunk_init(struct chunk *chunk, const unsigned char *blocks,
+                const struct coord *coord) {
     assert(chunk);
     assert(blocks);
     assert(coord);
 
     /* Init. */
 
-    chunk->dirty = TRUE;
+    chunk->is_dirty = TRUE;
 
     memcpy(chunk->blocks, blocks, CHUNK_TOTAL * sizeof(*blocks));
     chunk->coord = *coord;
@@ -237,16 +238,16 @@ void chunk_init(chunk_t *chunk, const unsigned char *blocks,
                  GL_DYNAMIC_DRAW); /* Pre allocate. */
 }
 
-void chunk_free(chunk_t *chunk) {
+void chunk_free(struct chunk *chunk) {
     glDeleteBuffers(1, &chunk->element_buffer);
     glDeleteBuffers(1, &chunk->vertex_buffer);
     glDeleteVertexArrays(1, &chunk->vertex_array);
 }
 
-void chunk_update(chunk_t *chunk, const world_t *world) {
-    if (chunk->dirty) {
+void chunk_update(struct chunk *chunk, const struct world *world) {
+    if (chunk->is_dirty) {
         generate_mesh(chunk, world);
 
-        chunk->dirty = FALSE;
+        chunk->is_dirty = FALSE;
     }
 }

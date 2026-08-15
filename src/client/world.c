@@ -8,9 +8,16 @@
 #include <assert.h>
 
 #include "macros.h"
-#include "array.h"
-#include "client/chunk.h"
-#include "client/renderer.h"
+
+static struct chunk *get_chunk(struct world *world,
+                               const struct coord *coord) {
+    assert(world);
+    assert(coord);
+
+    /* TODO: Return chunk from map. */
+
+    return NULL;
+}
 
 static float noise3d(float x, float y, float z) {
     int xi, yi, zi;
@@ -24,12 +31,15 @@ static float noise3d(float x, float y, float z) {
     yi = (int)y;
     zi = (int)z;
 
-    if (x < 0)
+    if (x < 0) {
         xi--;
-    if (y < 0)
+    }
+    if (y < 0) {
         yi--;
-    if (z < 0)
+    }
+    if (z < 0) {
         zi--;
+    }
 
     xf = x - (float)xi;
     yf = y - (float)yi;
@@ -65,30 +75,55 @@ static float noise3d(float x, float y, float z) {
     return a * (1.0f - w) + b * w;
 }
 
-static void generate(unsigned char *blocks, const struct coord *coord) {
+static void generate(void *context) {
+    const struct world *world;
+    struct coord coord;
+
+    struct gen_result *result;
+
     int x;
     int y;
     int z;
+
+    assert(context);
+
+    world = ((struct gen_context *)context)->world;
+    coord = ((struct gen_context *)context)->coord;
+
+    /* The chunk might have been unloaded while this task was enqueued. */
+    pthread_mutex_lock(&world->mutex);
+    if (!get_chunk(&world, &coord)) {
+        pthread_mutex_unlock(&world->mutex);
+        return;
+    }
+    pthread_mutex_unlock(&world->mutex);
+
+    result = malloc(sizeof(struct generation_result));
+    if (!result) {
+        printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    result->coord = coord;
 
     for (x = 0; x < CHUNK_SIZE; x++) {
         for (y = 0; y < CHUNK_SIZE; y++) {
             for (z = 0; z < CHUNK_SIZE; z++) {
                 unsigned char *block;
-                coord_t block_coord;
+                struct coord block_coord;
                 float noise_x;
                 float noise_y;
                 float noise_z;
                 float n;
 
-                block = &blocks[INDEX_3D(x, y, z, CHUNK_SIZE)];
+                block = &result->blocks[INDEX_3D(x, y, z, CHUNK_SIZE)];
 
-                block_coord.x = coord->x * CHUNK_SIZE + x;
-                block_coord.y = coord->y * CHUNK_SIZE + y;
-                block_coord.z = coord->z * CHUNK_SIZE + z;
+                block_coord.x = coord.x * CHUNK_SIZE + x;
+                block_coord.y = coord.y * CHUNK_SIZE + y;
+                block_coord.z = coord.z * CHUNK_SIZE + z;
 
-                noise_x = (float)(coord->x * CHUNK_SIZE + x) / 25.0f;
-                noise_y = (float)(coord->y * CHUNK_SIZE + y) / 25.0f;
-                noise_z = (float)(coord->z * CHUNK_SIZE + z) / 25.0f;
+                noise_x = (float)(coord.x * CHUNK_SIZE + x) / 25.0f;
+                noise_y = (float)(coord.y * CHUNK_SIZE + y) / 25.0f;
+                noise_z = (float)(coord.z * CHUNK_SIZE + z) / 25.0f;
 
                 n = noise3d(noise_x, noise_y, noise_z);
 
@@ -108,325 +143,184 @@ static void generate(unsigned char *blocks, const struct coord *coord) {
             }
         }
     }
+
+    /* Push result onto queue. */
+    pthread_mutex_lock(&world->mutex);
+    QUEUE_PUSH(world->gens_elems, world->gens, &result);
+    pthread_mutex_unlock(&world->mutex);
+
+    free(context);
 }
 
-static void world_to_local_chunk_coord(const struct coord *coord,
-                                       const struct coord *center,
-                                       struct coord *out_local) {
-    out_local->x = coord->x - center->x + RENDER_DISTANCE;
-    out_local->y = coord->y - center->y + RENDER_DISTANCE;
-    out_local->z = coord->z - center->z + RENDER_DISTANCE;
-}
+static const struct coord neighbor_offsets[6] = {
+    {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
 
-static size_t local_chunk_coord_to_index(const struct coord *local) {
-    return (size_t)INDEX_3D(local->x, local->y, local->z, LOADED_CHUNKS_LEN);
-}
+static void mesh(void *void_context) {
+    struct mesh_context *context;
+    struct mesh_result *result;
 
-static size_t chunk_coord_to_index(const struct coord *coord,
-                                   const struct coord *center) {
-    struct coord local;
-    world_to_local_chunk_coord(coord, center, &local);
+    int i;
+    int x;
+    int y;
+    int z;
 
-    return local_chunk_coord_to_index(&local);
-}
+    struct chunk *chunk;
+    struct coord neighbor_coords[6];
 
-static int world_is_chunk_loaded(const world_t *world,
-                                 const struct coord *coord,
-                                 chunk_t **out_chunk) {
-    chunk_t *chunk_maybe_loaded;
+    /* Chunk blocks padded with adjacent blocks from neighboring chunks. */
+    unsigned char
+        blocks[(CHUNK_SIZE + 2) * (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2)] = {0};
 
-    assert(world);
-    assert(coord);
-    assert(out_chunk);
+    assert(void_context);
 
-    if (coord->x < world->center.x - RENDER_DISTANCE ||
-        coord->x > world->center.x + RENDER_DISTANCE ||
+    context = (struct mesh_context *)void_context;
 
-        coord->y < world->center.y - RENDER_DISTANCE ||
-        coord->y > world->center.y + RENDER_DISTANCE ||
-
-        coord->z < world->center.z - RENDER_DISTANCE ||
-        coord->z > world->center.z + RENDER_DISTANCE) {
-        return FALSE;
+    for (i = 0; i < 6; i++) {
+        neighbor_coords[i] = coord_add(&context->coord, &neighbor_offsets[i]);
     }
 
-    chunk_maybe_loaded =
-        world->loaded_chunks[chunk_coord_to_index(coord, &world->center)];
+    /* Populate block array. */
 
-    if (!chunk_maybe_loaded) {
-        return FALSE;
+    pthread_mutex_lock(&context->world->mutex);
+
+    chunk = get_chunk(&context->world, &context->coord);
+    if (!chunk) {
+        pthread_mutex_unlock(&context->world->mutex);
+        free(context);
+        return;
+    }
+    for (y = 0; y < CHUNK_SIZE; y++) {
+        for (z = 0; z < CHUNK_SIZE; z++) {
+            for (x = 0; x < CHUNK_SIZE; x++) {
+                blocks[INDEX_3D(x + 1, y + 1, z + 1, CHUNK_SIZE + 2)] =
+                    chunk->blocks[INDEX_3D(x, y, z, CHUNK_SIZE)];
+            }
+        }
+    }
+    chunk = get_chunk(context->world, neighbor_coords[0]);
+    if (chunk) {
+        for (y = 0; y < CHUNK_SIZE; y++) {
+            for (z = 0; z < CHUNK_SIZE; z++) {
+                blocks[INDEX_3D(17, y + 1, z + 1, CHUNK_SIZE + 2)] =
+                    chunk->blocks[INDEX_3D(0, y, z, CHUNK_SIZE)];
+            }
+        }
+    }
+    chunk = get_chunk(context->world, neighbor_coords[1]);
+    if (chunk) {
+        for (y = 0; y < CHUNK_SIZE; y++) {
+            for (z = 0; z < CHUNK_SIZE; z++) {
+                blocks[INDEX_3D(0, y + 1, z + 1, CHUNK_SIZE + 2)] =
+                    chunk->blocks[INDEX_3D(CHUNK_SIZE - 1, y, z, CHUNK_SIZE)];
+            }
+        }
+    }
+    chunk = get_chunk(context->world, neighbor_coords[2]);
+    if (chunk) {
+        for (z = 0; z < CHUNK_SIZE; z++) {
+            for (x = 0; x < CHUNK_SIZE; x++) {
+                blocks[INDEX_3D(x + 1, 17, z + 1, CHUNK_SIZE + 2)] =
+                    chunk->blocks[INDEX_3D(x, 0, z, CHUNK_SIZE)];
+            }
+        }
+    }
+    chunk = get_chunk(context->world, neighbor_coords[3]);
+    if (chunk) {
+        for (z = 0; z < CHUNK_SIZE; z++) {
+            for (x = 0; x < CHUNK_SIZE; x++) {
+                blocks[INDEX_3D(x + 1, 0, z + 1, CHUNK_SIZE + 2)] =
+                    chunk->blocks[INDEX_3D(x, CHUNK_SIZE - 1, z, CHUNK_SIZE)];
+            }
+        }
+    }
+    chunk = get_chunk(context->world, neighbor_coords[4]);
+    if (chunk) {
+        for (y = 0; y < CHUNK_SIZE; y++) {
+            for (x = 0; x < CHUNK_SIZE; x++) {
+                blocks[INDEX_3D(x + 1, y + 1, 17, CHUNK_SIZE + 2)] =
+                    chunk->blocks[INDEX_3D(x, y, 0, CHUNK_SIZE)];
+            }
+        }
+    }
+    chunk = get_chunk(context->world, neighbor_coords[5]);
+    if (chunk) {
+        for (y = 0; y < CHUNK_SIZE; y++) {
+            for (x = 0; x < CHUNK_SIZE; x++) {
+                blocks[INDEX_3D(x + 1, y + 1, 0, CHUNK_SIZE + 2)] =
+                    chunk->blocks[INDEX_3D(x, y, CHUNK_SIZE - 1, CHUNK_SIZE)];
+            }
+        }
     }
 
-    *out_chunk = chunk_maybe_loaded;
+    pthread_mutex_unlock(&task->world->mutex);
 
-    return TRUE;
-}
-
-static void *chunk_thread(void *ctx) {
-    struct world *world = ctx;
-
-    while (TRUE) {
-        struct chunk_job *job = NULL;
-        struct chunk_result *res;
-
-        pthread_mutex_lock(&world->mutex);
-
-        while (world->is_running && world->job_queue_count == 0) {
-            pthread_cond_wait(&world->cond, &world->mutex);
-        }
-
-        if (!world->is_running) {
-            pthread_mutex_unlock(&world->mutex);
-            break;
-        }
-
-        if (world->job_queue_count > 0) {
-            QUEUE_POP(world->chunk_jobs, world->chunk_jobs_info, &job);
-        }
-
-        pthread_mutex_unlock(&world->mutex);
-
-        res = malloc(sizeof(struct chunk_result));
-        if (!src) {
-            printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
-            exit(EXIT_FAILURE);
-        }
-
-        res->coord = job->coord;
-        generate(res->blocks, &res->coord);
-
-        free(job);
-
-        pthread_mutex_lock(&world->mutex);
-        ARR_APPEND(world->result_queue, world->result_queue_count,
-                   world->result_queue_cap, &res);
-        pthread_mutex_unlock(&world->mutex);
-    }
-
-    return NULL;
-}
-
-static void load_chunk(world_t *world, const struct coord *coord) {
-    chunk_job_t *job = malloc(sizeof(chunk_job_t));
-    if (!job) {
+    result = malloc(sizeof(struct meshing_result));
+    if (!result) {
         printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
+    result->coord = task->coord;
 
-    job->coord = *coord;
+    /* Construct chunk mesh here... */
 
-    pthread_mutex_lock(&world->mutex);
+    pthread_mutex_lock(&task->world->mutex);
+    RING_BUFFER_PUSH(context->world->meshes, context->world->mesh_elems,
+                     &result);
+    pthread_mutex_unlock(&task->world->mutex);
 
-    ARR_APPEND(world->job_queue, world->job_queue_count, world->job_queue_cap,
-               &job);
-    pthread_cond_signal(&world->cond);
-    pthread_mutex_unlock(&world->mutex);
+    free(context);
 }
 
-void world_init(world_t *world) {
-    struct coord coord;
+void world_init(struct world *world) {
+    assert(world);
 
-    /* Setup chunk loading threads. */
-
-    world->job_queue          = NULL;
-    world->job_queue_count    = 0;
-    world->job_queue_cap      = 0;
-    world->result_queue       = NULL;
-    world->result_queue_count = 0;
-    world->result_queue_cap   = 0;
+    /* Setup thread pool. */
 
     pthread_mutex_init(&world->mutex, NULL);
     pthread_cond_init(&world->cond, NULL);
-    world->is_running = TRUE;
-    pthread_create(&world->thread, NULL, chunk_load_thread, world);
-
-    /* Load chunks. */
-
-    world->center.x = 0;
-    world->center.y = 0;
-    world->center.z = 0;
-
-    memset(world->loaded_chunks, 0, LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
-
-    for (coord.x = -RENDER_DISTANCE; coord.x <= RENDER_DISTANCE; coord.x++) {
-        for (coord.y = -RENDER_DISTANCE; coord.y <= RENDER_DISTANCE;
-             coord.y++) {
-            for (coord.z = -RENDER_DISTANCE; coord.z <= RENDER_DISTANCE;
-                 coord.z++) {
-                load_chunk(world, &coord);
-            }
-        }
-    }
 }
 
-void world_update(world_t *world, const camera_t *cam) {
+void world_update(struct world *world, const struct camera *camera) {
     struct coord camera_coord;
-    size_t i;
-    int is_camera_in_different_chunk = FALSE;
+    int i;
 
-    camera_coord.x = (int)cam->pos.VEC_X / CHUNK_SIZE;
-    camera_coord.y = (int)cam->pos.VEC_Y / CHUNK_SIZE;
-    camera_coord.z = (int)cam->pos.VEC_Z / CHUNK_SIZE;
+    assert(world);
+    assert(camera);
 
-    /* Poll threads for new chunks. */
+    camera_coord.x = (int)camera->pos.VEC_X / CHUNK_SIZE;
+    camera_coord.y = (int)camera->pos.VEC_Y / CHUNK_SIZE;
+    camera_coord.z = (int)camera->pos.VEC_Z / CHUNK_SIZE;
+
+    /* Poll task results. */
 
     pthread_mutex_lock(&world->mutex);
 
-    for (i = 0; i < world->result_queue_count; i++) {
-        chunk_result_t *result;
-        int is_within_region = TRUE;
+    while (world->generation_results_info.size > 0) {
+        struct generation_result *result;
+        QUEUE_POP(world->generation_results, world->generation_results_info,
+                  &result);
 
-        result = world->result_queue[i];
-
-        if (labs(result->coord.x - camera_coord.x) > RENDER_DISTANCE ||
-            labs(result->coord.y - camera_coord.y) > RENDER_DISTANCE ||
-            labs(result->coord.z - camera_coord.z) > RENDER_DISTANCE) {
-            is_within_region = FALSE;
-        }
-
-        if (is_within_region) {
-            chunk_t *chunk = malloc(sizeof(chunk_t));
-            if (!chunk) {
-                printf("%s:%d Out of memory!\r\n", __FILE__, __LINE__);
-                exit(EXIT_FAILURE);
-            }
-
-            chunk_init(chunk, result->blocks, &result->coord);
-
-            world->loaded_chunks[chunk_coord_to_index(&result->coord,
-                                                      &world->center)] = chunk;
-        }
+        /* Do something with the result... */
 
         free(result);
     }
 
-    world->result_queue_count = 0;
+    while (world->meshing_results_info.size > 0) {
+        struct generation_result *result;
+        QUEUE_POP(world->meshing_results, world->meshing_results_info,
+                  &result);
+
+        /* Do something with the result... */
+
+        free(result);
+    }
 
     pthread_mutex_unlock(&world->mutex);
 
-    /* Check if camera has moved to a different chunk. */
-    if (world->center.x != camera_coord.x ||
-        world->center.y != camera_coord.y ||
-        world->center.z != camera_coord.z) {
-        is_camera_in_different_chunk = TRUE;
-    }
-
-    /* Move and generate chunks. */
-    if (is_camera_in_different_chunk) {
-        struct coord old_center;
-        struct coord diff;
-        chunk_t *old_loaded_chunks[LOADED_CHUNKS_TOTAL];
-        int x;
-        int y;
-        int z;
-
-        old_center    = world->center;
-        world->center = camera_coord;
-
-        diff.x = world->center.x - old_center.x;
-        diff.y = world->center.y - old_center.y;
-        diff.z = world->center.z - old_center.z;
-
-        memcpy(old_loaded_chunks, world->loaded_chunks,
-               LOADED_CHUNKS_TOTAL * sizeof(chunk_t *));
-
-        /* For each chunk in the new region, check if we can copy the chunk
-           from the previously loaded region or if a new one has to be
-           generated. */
-
-        for (x = 0; x < LOADED_CHUNKS_LEN; x++) {
-            for (y = 0; y < LOADED_CHUNKS_LEN; y++) {
-                for (z = 0; z < LOADED_CHUNKS_LEN; z++) {
-                    struct coord coord;
-                    struct coord old_coord;
-                    int delete   = FALSE;
-                    int can_copy = TRUE;
-
-                    coord.x = x;
-                    coord.y = y;
-                    coord.z = z;
-
-                    old_coord.x = x + diff.x;
-                    old_coord.y = y + diff.y;
-                    old_coord.z = z + diff.z;
-
-                    /* Free chunk if it has moved out of new area. */
-
-                    if (coord.x < diff.x ||
-                        coord.x >= diff.x + LOADED_CHUNKS_LEN ||
-                        coord.y < diff.y ||
-                        coord.y >= diff.y + LOADED_CHUNKS_LEN ||
-                        coord.z < diff.z ||
-                        coord.z >= diff.z + LOADED_CHUNKS_LEN) {
-                        delete = TRUE;
-                    }
-
-                    if (delete) {
-                        size_t idx = local_chunk_coord_to_index(&coord);
-
-                        if (old_loaded_chunks[idx]) {
-                            struct coord below_coord;
-                            chunk_t *below_chunk;
-
-                            /* Set chunk below to dirty. */
-
-                            below_coord = old_loaded_chunks[idx]->coord;
-                            below_coord.y--;
-
-                            if (world_is_chunk_loaded(world, &below_coord,
-                                                      &below_chunk)) {
-                                below_chunk->dirty = TRUE;
-                            }
-
-                            /* Free. */
-                            chunk_free(old_loaded_chunks[idx]);
-                            free(old_loaded_chunks[idx]);
-                            old_loaded_chunks[idx] = NULL;
-                        }
-                    }
-
-                    /* Copy chunk if it is still within area. */
-
-                    if (old_coord.x < 0 || old_coord.x >= LOADED_CHUNKS_LEN ||
-                        old_coord.y < 0 || old_coord.y >= LOADED_CHUNKS_LEN ||
-                        old_coord.z < 0 || old_coord.z >= LOADED_CHUNKS_LEN) {
-                        can_copy = FALSE;
-                    }
-
-                    /* Copy chunk. */
-                    if (can_copy) {
-                        chunk_t *old =
-                            old_loaded_chunks[local_chunk_coord_to_index(
-                                &old_coord)];
-
-                        world->loaded_chunks[local_chunk_coord_to_index(
-                            &coord)] = old;
-                    }
-                    /* Generate new chunk. */
-                    else {
-                        struct coord chunk_coord;
-
-                        chunk_coord.x =
-                            coord.x + world->center.x - RENDER_DISTANCE;
-                        chunk_coord.y =
-                            coord.y + world->center.y - RENDER_DISTANCE;
-                        chunk_coord.z =
-                            coord.z + world->center.z - RENDER_DISTANCE;
-
-                        world->loaded_chunks[local_chunk_coord_to_index(
-                            &coord)] = NULL;
-
-                        load_chunk(world, &chunk_coord);
-                    }
-                }
-            }
-        }
-    }
-
     /* Update chunks. */
     for (i = 0; i < LOADED_CHUNKS_TOTAL; i++) {
-        if (world->loaded_chunks[i]) {
-            chunk_update(world->loaded_chunks[i], world);
+        if (world->chunks[i]) {
+            chunk_update(world->chunks[i], world);
         }
     }
 }

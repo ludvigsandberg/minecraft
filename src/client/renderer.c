@@ -7,6 +7,7 @@
 
 #include "matrix.h"
 #include "client/opengl.h"
+#include "client/world.h"
 
 #define GLYPH_PIXELS 12
 

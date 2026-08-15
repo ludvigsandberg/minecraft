@@ -10,7 +10,7 @@
 #define PI_2      (PI / 2.0)
 #define MAX_PITCH 89.999f
 
-void camera_init(camera_t *camera) {
+void camera_init(struct camera *camera) {
     assert(camera);
 
     camera->pos.VEC_X = 0.0f;
@@ -23,7 +23,7 @@ void camera_init(camera_t *camera) {
     camera_update_viewport(camera, 900, 600);
 }
 
-void camera_update_viewport(camera_t *camera, int width, int height) {
+void camera_update_viewport(struct camera *camera, int width, int height) {
     float fov;
     float aspect_ratio;
 
@@ -38,7 +38,7 @@ void camera_update_viewport(camera_t *camera, int width, int height) {
     camera->viewport.projection_matrix =
         perspective(aspect_ratio, fov, 0.1f, 1000.0f);
 }
-void camera_update(camera_t *camera, const window_t *window,
+void camera_update(struct camera *camera, const struct window *window,
                    float delta_time) {
     float speed;
     float yaw_rad;
@@ -116,9 +116,9 @@ void camera_update(camera_t *camera, const window_t *window,
     }
 
     eye_pos = camera->pos;
-    center  = vec3_add(&camera->pos, &forward);
+    center  = vector3_add(&camera->pos, &forward);
 
-    /* Apply offset since camera is positioned at player eye height. */
+    /* Position camera at player eye height. */
     eye_pos.VEC_Y += PLAYER_EYE_HEIGHT;
     center.VEC_Y += PLAYER_EYE_HEIGHT;
 
